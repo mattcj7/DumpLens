@@ -1,19 +1,15 @@
 # DumpLens Root Agent Instructions
 
-This root `AGENTS.md` exists so coding agents find project rules immediately at repo root.
+This root `AGENTS.md` is the entry point for coding agents. The authoritative workflow and guardrails live in `Docs/AGENTS.md`.
 
-Before making any change, read:
+Before making any change:
 
 ```text
-Docs/AGENTS.md
-Docs/TICKETS.md
-Docs/PROJECT_STRUCTURE.md
-Docs/PROJECT_REFERENCES.md
-Docs/TESTING.md
-Docs/LOGGING_GUIDELINES.md
-Docs/DECISIONS.md
+1. Read Docs/AGENTS.md first.
+2. Read Docs/TICKETS.md and identify the current active ticket.
+3. Read the required project, testing, logging, decision, security, AI, and UI guidance listed in Docs/AGENTS.md.
 ```
 
-Then work only on the active ticket.
+Then work only on the active ticket and its acceptance criteria.
 
-Do not implement out-of-scope features. Do not mutate original evidence. Do not add unsupported AI/legal conclusions. Add or update tests where the ticket requires it. Add logging for meaningful diagnostics without logging sensitive evidence content.
+Do not implement out-of-scope features. Do not mutate original evidence. Do not add unsupported AI/legal conclusions. Add or update tests when the ticket changes behavior. Add evidence-safe logging when the ticket changes operational behavior.

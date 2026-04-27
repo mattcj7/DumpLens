@@ -1,0 +1,20 @@
+# Build outputs
+bin/
+obj/
+
+# IDE and workspace state
+.vs/
+.idea/
+.vscode/
+
+# Test and coverage artifacts
+TestResults/
+coverage/
+
+# User-specific files
+*.user
+*.suo
+
+# Package and log artifacts
+*.nupkg
+*.log

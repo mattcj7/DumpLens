@@ -8,51 +8,48 @@ DumpLens is an offline-first investigative communications reconstruction tool. I
 
 ## Required Reading Before Any Work
 
-Read these files before making changes:
+Read in this order before making changes:
 
 ```text
-Docs/TICKETS.md
-Docs/PROJECT_STRUCTURE.md
-Docs/PROJECT_REFERENCES.md
-Docs/TESTING.md
-Docs/LOGGING_GUIDELINES.md
-Docs/DECISIONS.md
-Docs/SECURITY_GUARDRAILS.md
-Docs/AI_GUARDRAILS.md
-Docs/UI_Guidelines.md
-Docs/DATA_SCHEMA.md
-Docs/IMPORT_FORMATS.md
+1. Docs/TICKETS.md
+2. Docs/PROJECT_STRUCTURE.md
+3. Docs/PROJECT_REFERENCES.md
+4. Docs/TESTING.md
+5. Docs/LOGGING_GUIDELINES.md
+6. Docs/QUALITY_GATES.md
+7. Docs/DECISIONS.md
+8. Docs/SECURITY_GUARDRAILS.md
+9. Docs/AI_GUARDRAILS.md
+10. Docs/UI_Guidelines.md
 ```
 
-For architecture context, also read:
+Read these when the active ticket touches their area, or when the ticket explicitly requires them:
 
 ```text
+Docs/CODING_STANDARDS.md
+Docs/DATA_SCHEMA.md
+Docs/IMPORT_FORMATS.md
 Docs/TECHNICAL_ARCHITECTURE.md
 Docs/DESIGN.md
 ```
 
 ## Ticket-First Workflow
 
-Work from `Docs/TICKETS.md`.
+`Docs/TICKETS.md` controls the work.
 
 Rules:
 
 1. Work on one ticket at a time.
-2. Do not implement features outside the active ticket.
-3. Keep acceptance criteria visible while working.
-4. Respect the ticket's `Out of Scope` section.
-5. Update relevant docs when a ticket changes architecture, behavior, schema, tests, logging, or workflow.
-6. Report changed files, tests run, and verification results when finished.
+2. Treat the user-assigned ticket as active. If no ticket is assigned explicitly, use the current active ticket from `Docs/TICKETS.md`, not historical setup tickets by default.
+3. Keep the ticket goal, requirements, acceptance criteria, and out-of-scope section visible while working.
+4. Do not implement features, cleanup, refactors, or docs changes outside the active ticket unless the ticket explicitly requires them.
+5. If the ticket is documentation-only, do not implement app features.
+6. Update relevant docs when the active ticket changes architecture, behavior, schema, tests, logging, workflow, or guardrails.
+7. Finish with the required completion report format in this file.
 
-## Current Starting Ticket
+## Historical Context
 
-The first coding ticket is:
-
-```text
-T0001 - Create Solution and Repository Structure
-```
-
-Do not start with UI screens, database schema, importers, reconciliation, AI, or reports.
+`T0001 - Create Solution and Repository Structure` remains useful as historical foundation context, but it is not the default active ticket. Do not treat `T0001` as current work unless the user explicitly assigns it.
 
 ## Architecture Boundaries
 
@@ -83,7 +80,7 @@ Docs/PROJECT_STRUCTURE.md
 Docs/PROJECT_REFERENCES.md
 ```
 
-Do not create circular project references. Do not place domain/business logic directly in UI views.
+Do not create circular project references. Do not place domain/business logic directly in UI views. Do not bypass documented layer boundaries because a shortcut seems convenient.
 
 ## Evidence Integrity Rules
 
@@ -95,6 +92,7 @@ Do not create circular project references. Do not place domain/business logic di
 - No feature may modify original evidence files.
 - Temp files must be cleaned up safely.
 - Exports must be hashed and audited when export functionality exists.
+- Never mutate, overwrite, normalize in place, or silently discard original evidence.
 
 ## AI Guardrails
 
@@ -106,6 +104,7 @@ Do not create circular project references. Do not place domain/business logic di
 - AI cannot label someone as guilty, a gang member, a co-conspirator, or a criminal associate without human-reviewed source support.
 - Cloud AI must be optional, logged, and redaction-capable.
 - No official report may include unsupported AI conclusions.
+- Do not add unsupported legal or evidentiary conclusions anywhere in the product or docs.
 
 Follow:
 
@@ -131,7 +130,7 @@ Docs/UI_Guidelines.md
 
 ## Testing Requirements
 
-Strong testing is mandatory throughout the build.
+Strong testing is mandatory throughout the build for behavior-heavy changes.
 
 General rules:
 
@@ -139,7 +138,8 @@ General rules:
 - Add integration tests for database migrations, repositories, import pipelines, and report/export pipelines.
 - Add golden-data tests for import/reconciliation behavior.
 - Add performance tests for large message sets and long conversations where relevant.
-- If a ticket changes behavior and no tests are added, explain why.
+- If a ticket changes behavior and no tests are added, explain why in the completion report.
+- If a ticket is docs-only or otherwise cannot justify tests, say that explicitly.
 
 Minimum test expectations by area:
 
@@ -178,6 +178,7 @@ Logging rules:
 - Never log full message bodies, raw evidence files, unredacted PII, passwords, API keys, tokens, or secret values.
 - Use correlation IDs for case operations, imports, jobs, AI runs, and exports.
 - Prefer structured logging fields over string-only messages.
+- Evidence-safe logging is required for operational or behavior-heavy changes where diagnostics matter.
 
 Follow:
 
@@ -191,6 +192,7 @@ Docs/LOGGING_GUIDELINES.md
 - Do not create telemetry that sends case data externally.
 - Any future cloud service integration must be explicit, optional, and documented.
 - Any future logs that may contain case-sensitive data must remain local unless the user explicitly exports them.
+- Do not weaken chain-of-custody, hashing, auditability, or local-first evidence protections.
 
 Follow:
 
@@ -215,15 +217,27 @@ Follow:
 Docs/CODING_STANDARDS.md
 ```
 
-## Completion Response Required
+## Scope Control
+
+- No scope creep.
+- Do not implement app features, schemas, UI screens, importers, AI, reconciliation, reports, or other product work unless the active ticket explicitly requires them.
+- Do not change `Docs/PROJECT_REFERENCES.md` or architecture direction unless the active ticket requires it and `Docs/DECISIONS.md` is updated accordingly.
+- Do not invent requirements that are not stated in the active ticket or governing docs.
+
+## Completion Report Required
 
 When done with a ticket, report:
 
 ```text
-Ticket completed:
+Ticket:
+Status:
 Changed files:
+Summary:
+Tests added/updated:
 Tests run:
 Build commands run:
+Logging added/updated:
+Docs updated:
 Verification:
 Known issues:
 Assumptions:
