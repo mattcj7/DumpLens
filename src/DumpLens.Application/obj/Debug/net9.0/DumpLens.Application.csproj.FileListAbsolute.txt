@@ -1,0 +1,16 @@
+O:\DumpLens\src\DumpLens.Application\bin\Debug\net9.0\DumpLens.Application.deps.json
+O:\DumpLens\src\DumpLens.Application\bin\Debug\net9.0\DumpLens.Application.dll
+O:\DumpLens\src\DumpLens.Application\bin\Debug\net9.0\DumpLens.Application.pdb
+O:\DumpLens\src\DumpLens.Application\bin\Debug\net9.0\DumpLens.Core.dll
+O:\DumpLens\src\DumpLens.Application\bin\Debug\net9.0\DumpLens.Core.pdb
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.csproj.AssemblyReference.cache
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.GeneratedMSBuildEditorConfig.editorconfig
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.AssemblyInfoInputs.cache
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.AssemblyInfo.cs
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.csproj.CoreCompileInputs.cache
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.sourcelink.json
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.027BDF6E.Up2Date
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.dll
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\refint\DumpLens.Application.dll
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\DumpLens.Application.pdb
+O:\DumpLens\src\DumpLens.Application\obj\Debug\net9.0\ref\DumpLens.Application.dll

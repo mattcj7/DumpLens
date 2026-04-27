@@ -1,0 +1,31 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="coverlet.collector" Version="6.0.2" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.12.0" />
+    <PackageReference Include="xunit" Version="2.9.2" />
+    <PackageReference Include="xunit.runner.visualstudio" Version="2.8.2" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\DumpLens.Core\DumpLens.Core.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Application\DumpLens.Application.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Persistence\DumpLens.Persistence.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Ingestion\DumpLens.Ingestion.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Search\DumpLens.Search.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Reporting\DumpLens.Reporting.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.Audit\DumpLens.Audit.csproj" />
+  </ItemGroup>
+
+</Project>

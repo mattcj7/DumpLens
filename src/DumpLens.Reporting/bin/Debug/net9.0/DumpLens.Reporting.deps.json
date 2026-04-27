@@ -1,0 +1,56 @@
+{
+  "runtimeTarget": {
+    "name": ".NETCoreApp,Version=v9.0",
+    "signature": ""
+  },
+  "compilationOptions": {},
+  "targets": {
+    ".NETCoreApp,Version=v9.0": {
+      "DumpLens.Reporting/1.0.0": {
+        "dependencies": {
+          "DumpLens.Application": "1.0.0",
+          "DumpLens.Core": "1.0.0"
+        },
+        "runtime": {
+          "DumpLens.Reporting.dll": {}
+        }
+      },
+      "DumpLens.Application/1.0.0": {
+        "dependencies": {
+          "DumpLens.Core": "1.0.0"
+        },
+        "runtime": {
+          "DumpLens.Application.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      },
+      "DumpLens.Core/1.0.0": {
+        "runtime": {
+          "DumpLens.Core.dll": {
+            "assemblyVersion": "1.0.0.0",
+            "fileVersion": "1.0.0.0"
+          }
+        }
+      }
+    }
+  },
+  "libraries": {
+    "DumpLens.Reporting/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DumpLens.Application/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    },
+    "DumpLens.Core/1.0.0": {
+      "type": "project",
+      "serviceable": false,
+      "sha512": ""
+    }
+  }
+}
