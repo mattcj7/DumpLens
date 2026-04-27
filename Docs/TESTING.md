@@ -2,9 +2,23 @@
 
 ## Purpose
 
-DumpLens must have strong testing throughout the build. The app handles sensitive investigative evidence, so correctness, traceability, and careful language matter.
+Defines the testing standard for DumpLens.
 
-Testing must cover both expected behavior and failure/edge cases.
+DumpLens handles evidentiary data, review workflows, and careful investigative language. Tests must prove correctness, traceability, and evidence-safe behavior, not only basic happy paths.
+
+## Core Test Position
+
+Testing is mandatory for behavior-heavy changes.
+
+Required principles:
+
+- Prefer strong unit tests for logic-heavy behavior.
+- Add integration tests when behavior crosses storage, filesystem, migration, or workflow boundaries.
+- Add golden-data tests when parsing, normalization, reconciliation, or output stability matters.
+- Use performance tests when scale or responsiveness is an acceptance concern.
+- Use synthetic fixtures only. Never use real evidence.
+
+If a ticket changes behavior and no tests are added or updated, the completion report must explain why.
 
 ## Test Projects
 
@@ -15,91 +29,158 @@ tests/DumpLens.Tests.GoldenData
 tests/DumpLens.Tests.Performance
 ```
 
-## Project References
+## Synthetic Test Data Rules
 
-Use the reference layout in:
+Required rules:
 
-```text
-Docs/PROJECT_REFERENCES.md
-```
+- Never place real case data, screenshots, transcripts, phone numbers, or account identifiers in fixtures.
+- Use synthetic message bodies, names, phone numbers, handles, and timestamps.
+- Fixture data should be readable enough to explain the behavior under test without resembling real evidence.
+- If a bug was discovered from real evidence, reproduce it with a synthetic fixture before committing a test.
 
 ## Unit Testing Requirements
 
-Unit tests are required for:
+Unit tests are required for behavior-heavy logic including:
 
-- Domain/value-object behavior.
-- Enum/string mapping helpers.
-- Identity normalization.
-- Phone number normalization.
-- Username/handle normalization.
-- Email normalization.
-- Timestamp parsing and timezone conversion.
-- Message body normalization and hashing helpers.
-- Reconciliation scoring.
-- Missing counterpart detection rules.
-- Gap-window clustering rules.
-- Slang/dictionary matching.
-- AI structured output validation.
-- AI redaction and rehydration.
-- Guardrail language checks.
-- File/path sanitization helpers.
-- Logging redaction helpers.
+- domain rules and value objects
+- enum or persisted-string mapping helpers
+- evidence hashing helpers
+- path and filename sanitization
+- source artifact traceability helpers
+- identity normalization
+- phone number, email, and handle normalization
+- timestamp parsing and timezone conversion
+- message-body normalization
+- reconciliation scoring and penalties
+- missing-counterpart and gap detection logic
+- AI structured output validation
+- AI prohibited-language checks
+- AI redaction and rehydration helpers
+- logging redaction helpers
+- correlation ID creation and propagation helpers
 
-## Unit Test Quality Rules
+Unit test expectations:
 
-- Tests must be deterministic.
-- Tests must not require network access.
-- Tests must not use real case data.
-- Use synthetic fixtures only.
-- Test names should describe the expected behavior.
-- Include edge cases and failure cases.
-- Avoid asserting vague behavior.
-- Avoid tests that pass only because implementation details are mocked too heavily.
+- cover happy path, edge cases, and failure cases
+- remain deterministic
+- avoid real network access
+- avoid dependence on machine-local secrets or mutable global state
+- assert outcomes that matter to the user or integrity model
+
+## Strong Unit Test Expectations
+
+Behavior-heavy changes require more than one nominal-path test.
+
+Strong unit test sets usually include:
+
+- valid input cases
+- malformed input cases
+- boundary conditions
+- duplicate or ambiguous data cases
+- careful-language or guardrail enforcement cases
+- traceability preservation cases
+- redaction or evidence-safety cases where applicable
+
+Examples:
+
+- A timestamp parser change should include valid, ambiguous, invalid, and timezone-shift cases.
+- A reconciliation scorer change should include exact matches, near matches, false-match prevention, and short/generic-message penalties.
+- A logging helper change should prove sensitive content is removed while identifiers and correlation IDs remain useful.
 
 ## Integration Testing Requirements
 
-Integration tests are required for:
+Integration tests are required when behavior crosses component boundaries, especially for:
 
-- Database migration runner.
-- Schema creation and foreign key enforcement.
-- Repository persistence/readback.
-- Source registration and case folder creation.
-- File hashing service with real temporary files.
-- Import pipeline with temporary case databases.
-- Search indexing and rebuild behavior.
-- Report/export pipeline.
-- Audit event hash chain.
+- database migration runner behavior
+- schema creation and foreign key enforcement
+- repository write/read workflows
+- case folder creation
+- source registration and artifact metadata persistence
+- SHA-256 hashing service against real temporary files
+- audit event persistence and hash-chain continuity
+- import pipeline execution against temporary case storage
+- export/report generation with citation and hash verification
+
+Integration test expectations:
+
+- use temporary directories and temporary databases
+- verify behavior end to end, not only mocked calls
+- confirm evidence immutability where relevant
+- confirm traceability links are created where relevant
+- confirm audit logging occurs for security-sensitive workflows where practical
 
 ## Golden-Data Testing Requirements
 
-Golden-data tests are required for:
+Golden-data tests are required where stable parsing or matching behavior matters, including:
 
-- CSV message imports.
-- XLSX message imports.
-- Call log imports.
-- Conversation building.
-- Same-message reconciliation across two sources.
-- Missing middle-segment detection.
-- Provider-only messages.
-- Screenshot-only/manual-entry messages.
-- Group chat participant behavior.
-- Short/generic message false-match prevention.
+- CSV message imports
+- XLSX message imports
+- call log imports
+- conversation building
+- normalization outputs that must remain stable
+- same-message reconciliation across sources
+- provider-only, device-only, and screenshot-only scenarios
+- missing middle-segment and gap detection
+- short/generic message false-match prevention
+- group chat participant handling
 
-Golden fixtures must be synthetic and stored under a test fixtures folder. Never use real evidence.
+Golden-data expectations:
+
+- fixtures must be synthetic
+- expected outputs must be reviewed and intentionally updated
+- changes to expected outputs must be explained in the ticket or test update
+- unstable or noisy fields should be normalized before snapshot comparison
+
+## Logging and Audit Test Expectations
+
+Where practical, tests should verify:
+
+- sensitive evidence is not emitted to logs
+- correlation IDs are present on major operations
+- operational logs retain useful safe context
+- audit events record the correct actor, operation, and target IDs
+- traceability identifiers survive failure paths
+- AI logging does not leak full prompts or responses
+
+## Security and Evidence Integrity Test Expectations
+
+Where relevant, tests should verify:
+
+- original evidence files remain unchanged
+- SHA-256 hashes match known values
+- source artifact metadata is preserved
+- derived records link back to source artifacts
+- tampering or mismatch paths raise safe warnings or failures
+
+## AI Test Expectations
+
+AI-related tickets must include tests for:
+
+- schema-valid structured output acceptance
+- schema-invalid output rejection
+- required citation presence
+- prohibited conclusion rejection
+- confidence label validation
+- provenance preservation after review actions
+- redaction-capable cloud mode behavior
+
+AI tests must not call external providers.
 
 ## Performance Testing Requirements
 
-Performance tests should cover:
+Performance tests are required when the ticket changes scale-sensitive behavior.
 
-- Importing large CSV files.
-- Indexing large message sets.
-- Opening long conversations with virtualization assumptions.
-- Reconciliation candidate generation.
-- Reconciliation scoring.
-- Search query performance.
-- Report generation on large timelines.
+Areas to cover where relevant:
 
-Initial performance targets:
+- large imports
+- indexing large message sets
+- long conversation loading assumptions
+- reconciliation candidate generation
+- reconciliation scoring
+- search query performance
+- export generation
+
+Initial targets:
 
 | Operation | Target |
 |---|---:|
@@ -110,61 +191,32 @@ Initial performance targets:
 | Reconcile 100k messages | Background job; resumable |
 | Export report | Progress shown; output hash recorded |
 
-## AI Testing Requirements
+## Test Review Questions
 
-AI-related tests must verify:
+Before closing a ticket, confirm:
 
-- Output validates against schema.
-- Output includes source references.
-- Invalid output is rejected.
-- Unsupported conclusions are not accepted.
-- Confidence language is careful.
-- Warrant target suggestions are framed as investigative leads.
-- Redaction removes sensitive values before cloud-mode requests.
-- AI-assisted labels are preserved after approval.
+- Are behavior-heavy changes covered by strong unit tests?
+- Are storage/filesystem/workflow boundaries covered by integration tests where needed?
+- Are import/reconciliation/output stability concerns covered by golden-data tests where needed?
+- Do tests prove evidence immutability, SHA-256 hashing, and traceability where relevant?
+- Do tests use synthetic data only?
+- Do tests cover failure and guardrail cases, not only success paths?
 
-## Reconciliation Testing Requirements
+## Build and Test Commands
 
-Required tests:
-
-1. Exact same SMS appears on two devices.
-2. Same SMS differs by 30 seconds.
-3. Same message body appears twice in same thread; avoid false match.
-4. Short generic messages require stronger supporting signals.
-5. Group chat message has multiple recipients.
-6. One device is missing a middle segment.
-7. Provider return has messages not in device dump.
-8. Screenshot-only message cannot be over-trusted.
-9. Manual match overrides scoring.
-10. Investigator exclusion prevents future auto-match.
-11. Deleted artifact is flagged but not over-labeled.
-12. Timezone mismatch creates warning or corrected normalized time.
-
-## Logging Test Expectations
-
-Where practical, tests should verify:
-
-- Sensitive values are redacted from diagnostic log helper output.
-- Correlation IDs are included in operation logs.
-- Failed jobs log enough diagnostic context to debug.
-- Import warnings are recorded without dumping full raw evidence.
-- AI provider failures are logged without request body leakage.
-
-## Build Commands
-
-Preferred baseline commands after projects exist:
+Preferred baseline commands:
 
 ```powershell
-dotnet restore
-dotnet build
-dotnet test
+dotnet restore O:\DumpLens\DumpLens.sln
+dotnet build O:\DumpLens\DumpLens.sln
+dotnet test O:\DumpLens\DumpLens.sln
 ```
 
-For performance tests, use a separate command or category so they do not run on every quick loop unless requested.
+Performance tests may run separately when they should not block normal iteration.
 
-## Ticket Completion Test Report
+## Ticket Completion Test Reporting
 
-Every completed ticket response must include:
+Every completion report must include:
 
 ```text
 Tests added/updated:
@@ -173,4 +225,4 @@ Build commands run:
 Known test gaps:
 ```
 
-If tests cannot be added for a ticket, explain why.
+When a ticket is docs-only, say that no product-behavior tests were added and why.

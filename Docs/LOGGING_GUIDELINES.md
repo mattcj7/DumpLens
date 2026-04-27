@@ -2,256 +2,329 @@
 
 ## Purpose
 
-DumpLens must generate high-quality logs for debugging issues that slip past unit tests while protecting sensitive evidence.
+Defines the operational logging standard for DumpLens.
 
-Logs should help developers and investigators diagnose import failures, parsing issues, reconciliation problems, AI validation failures, report/export errors, and background job problems.
+DumpLens logs must help developers and investigators diagnose failures without leaking sensitive evidence or weakening chain-of-custody.
 
-## Logging Principles
+## Core Logging Position
 
-- Prefer structured logs over unstructured text.
-- Include correlation IDs.
-- Include case operation context without exposing sensitive evidence content.
-- Log state transitions and summaries.
-- Log warnings with actionable messages.
-- Never log full message bodies by default.
-- Never log raw evidence files.
-- Never log secrets.
-- Never log API keys, tokens, passwords, or private keys.
-- Never send logs externally without explicit user action.
+DumpLens requires evidence-safe structured logging.
+
+Logs must:
+
+- help explain what happened
+- help locate the affected case, import, artifact, job, or AI run
+- help reproduce failures with synthetic data
+- avoid exposing sensitive evidence content
+- complement, not replace, audit logging
+
+Operational logging and audit logging serve different purposes:
+
+- operational logs explain runtime behavior and failures
+- audit logs record durable security- and review-relevant actions
+
+## Required Logging Principles
+
+- Prefer structured fields over free-text-only messages.
+- Include correlation IDs for major operations.
+- Keep source artifact traceability visible through safe identifiers.
+- Log state transitions, counts, warnings, durations, and outcome summaries.
+- Preserve enough detail to debug importer, normalization, reconciliation, AI, export, and storage failures.
+- Never log sensitive evidence content unless an explicitly designed redacted field allows it.
 
 ## Correlation IDs
 
-Use correlation IDs for:
+Use correlation IDs for major operations including:
 
-- App startup session.
-- Case open session.
-- Import run.
-- Source registration.
-- Background job.
-- Reconciliation run.
-- AI run.
-- Report/export run.
-- Audit operation.
-- Error boundary.
+- app startup session
+- case open session
+- source registration
+- import run
+- background job
+- reconciliation run
+- AI run
+- report or export run
+- audit-sensitive operation
+- error boundary
 
-Recommended field names:
+Recommended fields:
 
 ```text
 correlation_id
+operation
 case_id
 source_import_id
+source_artifact_id
 job_id
 ai_run_id
 report_id
 conversation_id
-operation
 ```
+
+Rules:
+
+- A major operation must keep the same correlation ID across its child log events.
+- Child steps may add more specific IDs, but should not lose the parent correlation ID.
+- If a failure crosses layers, the correlation ID must remain visible through the emitted logs.
+
+## Sensitive Data Rules
+
+Never log by default:
+
+- full message bodies
+- full call transcripts
+- full screenshots or OCR text
+- raw evidence files
+- full raw metadata JSON blobs
+- passwords
+- API keys
+- provider tokens
+- private keys
+- complete credentials
+- full cloud AI prompts or responses
+- unredacted PII or case narrative text
+
+Allowed with care:
+
+- stable IDs
+- row numbers
+- thread IDs
+- timestamp values
+- file sizes
+- platform/source type
+- counts and summaries
+- full SHA-256 hashes in authoritative stores
+- SHA-256 prefixes in operational logs when enough
+- redacted snippets intentionally designed for diagnostics
+
+When in doubt, log the identifier, not the content.
+
+## Evidence-Safe Structured Fields
+
+Preferred fields where relevant:
+
+- `operation`
+- `correlation_id`
+- `case_id`
+- `source_import_id`
+- `source_artifact_id`
+- `message_id`
+- `row_number`
+- `warning_code`
+- `error_code`
+- `duration_ms`
+- `records_processed`
+- `records_skipped`
+- `matched_groups`
+- `ambiguous_count`
+- `redaction_enabled`
+- `provider_mode`
+
+Avoid burying all context in a single interpolated string.
 
 ## Log Levels
 
 ### Trace
 
-Use for very detailed local debugging. Disabled by default.
+Use for deep local diagnostics that are disabled by default.
 
-Examples:
+Acceptable examples:
 
-- Detailed scoring component names without message body.
-- Internal parser branch selection.
-- Timing details for indexing batches.
+- parser branch selection
+- batch timing detail
+- score component breakdown without message body content
 
 ### Debug
 
-Use for development diagnostics.
+Use for development diagnostics and safe internal detail.
 
-Examples:
+Acceptable examples:
 
-- Importer selected.
-- Number of rows previewed.
-- Candidate match count.
-- Score distribution summary.
-- Search index rebuild stage.
+- importer selected
+- candidate match counts
+- normalization branch chosen
+- index rebuild stage
 
 ### Information
 
-Use for normal important operations.
+Use for major successful operations.
 
-Examples:
+Acceptable examples:
 
-- Case created.
-- Source import registered.
-- Import completed.
-- Reconciliation run completed.
-- Report exported.
-- AI run completed.
+- case created
+- source registered
+- import completed
+- reconciliation completed
+- AI run completed
+- report exported
 
 ### Warning
 
-Use for recoverable problems requiring user/developer attention.
+Use for recoverable problems, guardrail triggers, or data-quality issues.
 
-Examples:
+Acceptable examples:
 
-- Timestamp could not be parsed.
-- Missing sender column.
-- Unknown timezone assumption.
-- Potential duplicate source import.
-- AI output failed schema validation.
-- Reconciliation produced many ambiguous matches.
+- timestamp parse failure on a row
+- ambiguous match rate above threshold
+- source hash changed in reference mode
+- AI output failed schema validation
 
 ### Error
 
 Use for failed operations.
 
-Examples:
+Acceptable examples:
 
-- Import failed.
-- Migration failed.
-- Case database could not open.
-- Report export failed.
-- AI provider request failed.
-- Hash mismatch detected.
+- migration failed
+- import failed
+- report export failed
+- case database could not open
+- hash verification failed
 
 ### Critical
 
-Use for severe corruption/security issues.
+Use for severe integrity or security failures.
 
-Examples:
+Acceptable examples:
 
-- Evidence hash mismatch.
-- Audit hash chain verification failure.
-- Case database integrity failure.
-- Unauthorized access attempt in future team mode.
+- evidence hash mismatch
+- audit chain verification failure
+- case integrity failure
+- future unauthorized access attempt
 
-## Sensitive Data Rules
+## Audit Logging Relationship
 
-Do not log:
+Audit-relevant operations should emit:
 
-- Full message bodies.
-- Full call transcripts.
-- Full raw metadata JSON.
-- Full file contents.
-- Passwords.
-- API keys.
-- Provider tokens.
-- Private keys.
-- Complete access credentials.
-- Full unredacted cloud AI request/response bodies.
+- operational logs for runtime diagnostics
+- audit events for durable security or review history
 
-Allowed with care:
+Examples that require audit history in addition to logs:
 
-- Message ID.
-- Source import ID.
-- Row number.
-- Hash prefix or full SHA-256 where appropriate.
-- Timestamp.
-- Platform.
-- Sender/recipient identity IDs.
-- Counts and summaries.
-- Redacted snippets when explicitly designed for safe diagnostics.
+- source registration
+- review-state changes
+- manual merge/split decisions
+- AI approval or rejection
+- export generation
+- integrity warning acknowledgement
 
-## Evidence-Safe Log Examples
-
-Good:
-
-```text
-Import completed: source_import_id=src_123 rows=84211 warnings=19 duration_ms=53220 correlation_id=imp_456
-```
-
-Good:
-
-```text
-Timestamp parse warning: source_import_id=src_123 row=144 field=sent_at warning_code=unparseable_timestamp correlation_id=imp_456
-```
-
-Good:
-
-```text
-Reconciliation completed: case_id=case_1 conversations=34 matched_groups=482 missing_counterparts=12 ambiguous=9 duration_ms=11892 correlation_id=rec_789
-```
-
-Avoid:
-
-```text
-Missing message: "where he at? bring the switch" from 803-555-1111
-```
-
-Use instead:
-
-```text
-Missing counterpart candidate created: present_message_id=msg_1 present_source=src_victim missing_source=src_suspect confidence=medium correlation_id=rec_789
-```
+Do not rely on ephemeral app logs as the only record of these actions.
 
 ## Import Logging
 
 Log:
 
-- Source selected.
-- Importer chosen.
-- File hash computed.
-- Source registration created.
-- Preview row count.
-- Mapping chosen.
-- Validation warning counts.
-- Import counts.
-- Skipped rows.
-- Failure reason.
+- source type selected
+- importer selected
+- source registration created
+- SHA-256 computation status
+- preview row count
+- mapping or probe result
+- validation warning counts
+- imported record counts
+- skipped row counts
+- duration
+- failure category
 
-Do not log raw rows or full message bodies.
+Do not log:
+
+- raw rows
+- full message bodies
+- full attachment contents
+
+Good example:
+
+```text
+Import completed operation=import correlation_id=imp_456 case_id=case_1 source_import_id=src_123 source_artifact_id=art_008 rows_imported=84211 warnings=19 duration_ms=53220
+```
 
 ## Reconciliation Logging
 
 Log:
 
-- Reconciliation run start/end.
-- Candidate counts.
-- Match score distribution.
-- Number of matched groups.
-- Number of source-only messages.
-- Number of missing counterpart candidates.
-- Number of gap windows.
-- Ambiguous match count.
-- Error details tied to IDs.
+- run start and completion
+- candidate counts
+- score distribution summaries
+- matched group counts
+- source-only counts
+- possible missing-counterpart counts
+- possible gap-window counts
+- ambiguous match counts
+- failure category and safe IDs
 
 Do not log message body content by default.
+
+Good example:
+
+```text
+Reconciliation completed operation=reconciliation correlation_id=rec_789 case_id=case_1 matched_groups=482 missing_counterparts=12 ambiguous=9 duration_ms=11892
+```
 
 ## AI Logging
 
 Log:
 
-- Provider mode.
-- Model name if available.
-- Prompt template ID/version.
-- Redaction enabled/disabled.
-- Input scope summary.
-- Output schema validation result.
-- Token usage if available.
-- Run status and error category.
+- provider mode
+- model name if available
+- prompt template ID/version
+- redaction enabled/disabled
+- input scope summary
+- output schema validation result
+- token usage if available
+- run status
+- error category
 
-Do not log full prompts or responses by default. Store AI outputs in the database according to the AI architecture and guardrails, not in application logs.
+Do not log:
 
-## Report/Export Logging
+- full prompts
+- full responses
+- unredacted rehydration manifests
+
+Good example:
+
+```text
+AI run completed operation=ai_run correlation_id=ai_204 case_id=case_1 ai_run_id=run_17 provider_mode=cloud redaction_enabled=true schema_valid=true findings_returned=4
+```
+
+## Report and Export Logging
 
 Log:
 
-- Report type.
-- Report ID.
-- Export format.
-- Output hash.
-- Included item counts.
-- Export duration.
-- Export errors.
+- report type
+- report ID
+- export format
+- included item counts
+- output SHA-256 status
+- duration
+- export failure category
+
+Reports and exports must remain traceable to cited source artifacts.
 
 ## Background Job Logging
 
 Every job should log:
 
-- Job queued.
-- Job started.
-- Meaningful progress checkpoints.
-- Job completed.
-- Job failed/canceled.
-- Error category and safe details.
+- queued
+- started
+- meaningful progress checkpoints
+- completed
+- canceled or failed
+- safe error details and IDs
 
-## Log Storage
+## Debugging Support Expectations
+
+A developer reading logs should be able to answer:
+
+- What operation ran?
+- Which case, import, artifact, job, or AI run was involved?
+- What stage failed?
+- How many records were processed?
+- Was redaction enabled?
+- What should be checked next?
+
+If logs cannot answer these questions without exposing sensitive content, improve the logging design.
+
+## Storage and Retention Direction
 
 Local-first default:
 
@@ -261,13 +334,29 @@ case_folder/logs/audit.jsonl
 case_folder/logs/ai_usage.jsonl
 ```
 
-Do not upload logs externally automatically.
+Rules:
 
-## Debug Packages
+- keep logs local by default
+- do not automatically upload logs
+- keep debug exports user-initiated
+- redact sensitive content by default in any debug package
 
-Future debug export packages should:
+## Bad Examples
 
-- Be user-initiated.
-- Redact sensitive evidence content by default.
-- Include app version, environment info, recent safe logs, job summaries, and error IDs.
-- Exclude raw evidence unless explicitly selected by the user.
+Bad:
+
+```text
+Missing message: "where he at? bring the switch" from 803-555-1111
+```
+
+Bad:
+
+```text
+Prompt sent to provider: [full prompt with raw conversation]
+```
+
+Use instead:
+
+```text
+Possible missing counterpart created operation=reconciliation correlation_id=rec_789 present_message_id=msg_1 present_source=src_victim missing_source=src_suspect confidence=medium
+```
