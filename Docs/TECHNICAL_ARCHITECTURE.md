@@ -63,3 +63,17 @@ Docs/PROJECT_REFERENCES.md
 - AI is optional and review-only.
 - Findings require source support.
 - Logs must be useful and evidence-safe.
+
+## Case Creation Workflow
+
+Application-facing case creation is exposed through `DumpLens.Application.Cases.ICaseService`.
+The SQLite-backed implementation in `DumpLens.Persistence.Cases` orchestrates:
+
+1. validate the request before filesystem or database writes
+2. create the case package through the case package service
+3. create and migrate the package database at `case.dlensdb`
+4. insert the row in `cases`
+5. write the `case_created` audit event through the audit logger
+6. return case/package/database/manifest/audit metadata
+
+Case creation logs operational stages with correlation IDs and safe identifiers only.
