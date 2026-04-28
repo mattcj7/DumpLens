@@ -62,7 +62,13 @@ jobs
 
 ## Current Migration Status
 
-No implementation migrations have been accepted yet.
+`T0006` introduces the SQLite migration runner and this bootstrap migration:
+
+```text
+src/DumpLens.Persistence/Migrations/0001_bootstrap_schema_migrations_support.sql
+```
+
+This migration creates only `schema_migrations` so later schema tickets can be tracked safely. The full product schema remains out of scope until `T0007`.
 
 Initial planned tickets:
 
