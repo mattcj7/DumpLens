@@ -157,6 +157,51 @@ Tests added:
 
 - `tests/DumpLens.Tests.Integration/Persistence/InitialCoreSchemaMigrationTests.cs`
 
+## T0008 Case Package Manifest
+
+Local case storage now includes a package manifest at:
+
+```text
+manifest.json
+```
+
+The expected local case database path inside each package is:
+
+```text
+case.dlensdb
+```
+
+Current manifest fields:
+
+- `package_version`
+- `package_id`
+- `case_id`
+- `case_number` when supplied
+- `title` when supplied
+- `created_at_utc`
+- `app_name`
+- `database_relative_path`
+- `preparation_mode`
+- `folders`
+
+Standard package folders:
+
+- `imports`
+- `indexes`
+- `attachments`
+- `attachments/thumbnails`
+- `attachments/extracted_text`
+- `attachments/media_cache`
+- `reports`
+- `exports`
+- `logs`
+- `backups`
+
+Tests added:
+
+- `tests/DumpLens.Tests.Unit/Core/Storage/SafePathNameTests.cs`
+- `tests/DumpLens.Tests.Integration/CasePackages/CasePackageServiceTests.cs`
+
 ## Enum Families
 
 ```text
