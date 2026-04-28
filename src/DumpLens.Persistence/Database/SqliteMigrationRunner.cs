@@ -80,6 +80,8 @@ public sealed class SqliteMigrationRunner
                 await connection.OpenAsync(cancellationToken).ConfigureAwait(false);
             }
 
+            await EnableForeignKeysAsync(connection, cancellationToken).ConfigureAwait(false);
+
             var schemaMigrationsExists = await SchemaMigrationsTableExistsAsync(connection, null, cancellationToken)
                 .ConfigureAwait(false);
             var appliedMigrations = schemaMigrationsExists
@@ -301,6 +303,24 @@ public sealed class SqliteMigrationRunner
         }
 
         return appliedMigrations;
+    }
+
+    private static async Task EnableForeignKeysAsync(SqliteConnection connection, CancellationToken cancellationToken)
+    {
+        await using (var enableCommand = connection.CreateCommand())
+        {
+            enableCommand.CommandText = "PRAGMA foreign_keys = ON;";
+            await enableCommand.ExecuteNonQueryAsync(cancellationToken).ConfigureAwait(false);
+        }
+
+        await using var verifyCommand = connection.CreateCommand();
+        verifyCommand.CommandText = "PRAGMA foreign_keys;";
+
+        var result = await verifyCommand.ExecuteScalarAsync(cancellationToken).ConfigureAwait(false);
+        if (Convert.ToInt32(result, CultureInfo.InvariantCulture) != 1)
+        {
+            throw new MigrationRunException("SQLite foreign key enforcement could not be enabled for the migration run.");
+        }
     }
 
     private sealed record AppliedMigration(string Version, string Name, string Checksum);

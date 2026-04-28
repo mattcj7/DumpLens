@@ -7,7 +7,7 @@ namespace DumpLens.Tests.Integration.Persistence;
 public sealed class SqliteMigrationRunnerTests
 {
     [Fact]
-    public async Task RunMigrationsAsync_CreatesNewDatabaseAndStoresBootstrapMigration()
+    public async Task RunMigrationsAsync_CreatesNewDatabaseAndStoresEmbeddedMigrations()
     {
         using var tempDatabase = TemporarySqliteDatabase.Create();
         var runner = new SqliteMigrationRunner();
@@ -32,10 +32,9 @@ public sealed class SqliteMigrationRunnerTests
         Assert.True(await reader.ReadAsync());
         Assert.Equal("0001", reader.GetString(0));
         Assert.Equal("bootstrap_schema_migrations_support", reader.GetString(1));
-
-        var checksum = reader.GetString(2);
-        Assert.Equal(64, checksum.Length);
-        Assert.All(checksum, static character => Assert.True(Uri.IsHexDigit(character)));
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("0002", reader.GetString(0));
+        Assert.Equal("initial_core_schema", reader.GetString(1));
         Assert.False(await reader.ReadAsync());
     }
 
@@ -184,6 +183,23 @@ public sealed class SqliteMigrationRunnerTests
             });
     }
 
+    [Fact]
+    public async Task RunMigrationsAsync_EnablesForeignKeysOnTheMigrationConnection()
+    {
+        using var tempDatabase = TemporarySqliteDatabase.Create(foreignKeysEnabled: false);
+        await using var connection = new SqliteConnection(tempDatabase.CreateConnectionString(foreignKeysEnabled: false));
+        await connection.OpenAsync();
+
+        await SetForeignKeysAsync(connection, enabled: false);
+        Assert.Equal(0, await GetForeignKeysSettingAsync(connection));
+
+        var runner = new SqliteMigrationRunner(new[] { CreateBootstrapMigration() });
+
+        await runner.RunMigrationsAsync(connection);
+
+        Assert.Equal(1, await GetForeignKeysSettingAsync(connection));
+    }
+
     private static MigrationScript CreateBootstrapMigration(string? prefixComment = null)
     {
         var sql = string.IsNullOrWhiteSpace(prefixComment)
@@ -208,6 +224,20 @@ public sealed class SqliteMigrationRunnerTests
         return Convert.ToInt32(await command.ExecuteScalarAsync()) == 1;
     }
 
+    private static async Task<int> GetForeignKeysSettingAsync(SqliteConnection connection)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = "PRAGMA foreign_keys;";
+        return Convert.ToInt32(await command.ExecuteScalarAsync());
+    }
+
+    private static async Task SetForeignKeysAsync(SqliteConnection connection, bool enabled)
+    {
+        await using var command = connection.CreateCommand();
+        command.CommandText = enabled ? "PRAGMA foreign_keys = ON;" : "PRAGMA foreign_keys = OFF;";
+        await command.ExecuteNonQueryAsync();
+    }
+
     private const string BootstrapSql =
         """
         CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -217,44 +247,6 @@ public sealed class SqliteMigrationRunnerTests
             checksum TEXT NOT NULL
         );
         """;
-
-    private sealed class TemporarySqliteDatabase : IDisposable
-    {
-        private TemporarySqliteDatabase(string directoryPath, string databasePath)
-        {
-            DirectoryPath = directoryPath;
-            DatabasePath = databasePath;
-            ConnectionString = new SqliteConnectionStringBuilder
-            {
-                DataSource = databasePath,
-                Pooling = false
-            }.ToString();
-        }
-
-        public string ConnectionString { get; }
-
-        public string DatabasePath { get; }
-
-        private string DirectoryPath { get; }
-
-        public static TemporarySqliteDatabase Create()
-        {
-            var directoryPath = Path.Combine(Path.GetTempPath(), "DumpLens.Tests", Guid.NewGuid().ToString("N"));
-            Directory.CreateDirectory(directoryPath);
-            var databasePath = Path.Combine(directoryPath, "case.db");
-            return new TemporarySqliteDatabase(directoryPath, databasePath);
-        }
-
-        public void Dispose()
-        {
-            SqliteConnection.ClearAllPools();
-
-            if (Directory.Exists(DirectoryPath))
-            {
-                Directory.Delete(DirectoryPath, recursive: true);
-            }
-        }
-    }
 
     private sealed class TestLogger<T> : ILogger<T>
     {

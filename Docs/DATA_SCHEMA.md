@@ -68,7 +68,15 @@ jobs
 src/DumpLens.Persistence/Migrations/0001_bootstrap_schema_migrations_support.sql
 ```
 
-This migration creates only `schema_migrations` so later schema tickets can be tracked safely. The full product schema remains out of scope until `T0007`.
+This migration creates only `schema_migrations` so later schema tickets can be tracked safely.
+
+`T0007` adds the initial core schema migration:
+
+```text
+src/DumpLens.Persistence/Migrations/0002_initial_core_schema.sql
+```
+
+The migration runner enables SQLite foreign-key enforcement on its migration connection before applying ordered scripts.
 
 Initial planned tickets:
 
@@ -82,6 +90,72 @@ T0046 - Implement Leads Schema Migration
 T0049 - Implement AI Schema Migration
 T0056 - Implement Reporting Schema Migration
 ```
+
+## T0007 Core Schema
+
+Migration file:
+
+```text
+src/DumpLens.Persistence/Migrations/0002_initial_core_schema.sql
+```
+
+Tables added:
+
+- `cases`
+- `app_users`
+- `case_users`
+- `source_imports`
+- `source_artifacts`
+- `import_mappings`
+- `import_warnings`
+- `audit_events`
+- `app_settings`
+
+Indexes added:
+
+- `idx_cases_case_number`
+- `idx_cases_status`
+- `idx_source_imports_case`
+- `idx_source_imports_hash`
+- `idx_source_imports_type`
+- `idx_source_artifacts_source`
+- `idx_source_artifacts_case`
+- `idx_source_artifacts_provider_id`
+- `idx_import_warnings_source`
+- `idx_import_warnings_status`
+- `idx_audit_events_case_time`
+- `idx_audit_events_entity`
+- `idx_audit_events_action`
+
+Important relationships:
+
+- `case_users.case_id -> cases.id` with `ON DELETE CASCADE`
+- `case_users.user_id -> app_users.id`
+- `source_imports.case_id -> cases.id` with `ON DELETE CASCADE`
+- `source_imports.imported_by_user_id -> app_users.id`
+- `source_artifacts.case_id -> cases.id` with `ON DELETE CASCADE`
+- `source_artifacts.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `import_mappings.case_id -> cases.id` with `ON DELETE CASCADE`
+- `import_mappings.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `import_mappings.created_by_user_id -> app_users.id`
+- `import_warnings.case_id -> cases.id` with `ON DELETE CASCADE`
+- `import_warnings.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `import_warnings.artifact_id -> source_artifacts.id`
+- `import_warnings.resolved_by_user_id -> app_users.id`
+- `audit_events.case_id -> cases.id` with `ON DELETE CASCADE`
+- `audit_events.user_id -> app_users.id`
+
+Deferred constraints:
+
+- `source_imports.owner_person_id`
+- `source_imports.device_id`
+- `source_imports.platform_account_id`
+
+These remain plain `TEXT` columns in `T0007`. Their foreign-key constraints are deferred until `T0014` adds the communication-schema tables they will reference.
+
+Tests added:
+
+- `tests/DumpLens.Tests.Integration/Persistence/InitialCoreSchemaMigrationTests.cs`
 
 ## Enum Families
 
