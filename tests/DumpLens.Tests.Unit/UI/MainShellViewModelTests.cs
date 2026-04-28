@@ -71,29 +71,9 @@ public class MainShellViewModelTests
 
     private static object CreateShellViewModel()
     {
-        var assembly = LoadViewModelsAssembly();
+        var assembly = ViewModelAssemblyLoader.Load();
         var shellType = assembly.GetType("DumpLens.App.ViewModels.MainShellViewModel", throwOnError: true)!;
         return Activator.CreateInstance(shellType)!;
-    }
-
-    private static Assembly LoadViewModelsAssembly()
-    {
-        var assemblyPath = Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "..",
-            "..",
-            "..",
-            "..",
-            "..",
-            "src",
-            "DumpLens.App.ViewModels",
-            "bin",
-            "Debug",
-            "net9.0",
-            "DumpLens.App.ViewModels.dll"));
-
-        Assert.True(File.Exists(assemblyPath), $"Expected view-model assembly at '{assemblyPath}'.");
-        return Assembly.LoadFrom(assemblyPath);
     }
 
     private static List<string> GetNavigationLabels(object shellViewModel)

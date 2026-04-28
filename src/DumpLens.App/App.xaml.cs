@@ -1,4 +1,5 @@
 using DumpLens.App.ViewModels;
+using DumpLens.Persistence.Cases;
 
 namespace DumpLens.App;
 
@@ -18,7 +19,9 @@ public partial class App : System.Windows.Application
 
         MainWindow = new MainWindow
         {
-            DataContext = new MainShellViewModel()
+            DataContext = new MainShellViewModel(
+                new SqliteCaseService(),
+                _logger.LogInformation)
         };
 
         MainWindow.Loaded += MainWindowOnLoaded;

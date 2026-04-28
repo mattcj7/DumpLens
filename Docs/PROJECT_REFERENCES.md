@@ -66,6 +66,7 @@ DumpLens.App.ViewModels
 DumpLens.App
   -> DumpLens.App.ViewModels
   -> DumpLens.Application
+  -> DumpLens.Persistence (composition root only for startup/service wiring)
 ```
 
 ## Test Project References
@@ -108,6 +109,7 @@ DumpLens.Tests.Performance
 
 - `DumpLens.Core` must remain dependency-free.
 - UI projects must not reference persistence directly unless a ticket explicitly approves it.
+- `DumpLens.App` may reference `DumpLens.Persistence` only as a composition root for startup wiring to existing application services. Keep persistence types out of views and view models.
 - Importers should not own review workflow logic.
 - AI providers should not directly approve findings.
 - Persistence should implement storage details but not own UI behavior.

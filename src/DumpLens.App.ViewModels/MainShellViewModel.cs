@@ -1,24 +1,71 @@
 using System.Collections.ObjectModel;
+using DumpLens.Application.Cases;
 
 namespace DumpLens.App.ViewModels;
 
 public sealed class MainShellViewModel : ObservableObject
 {
+    private static readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> NoOpLogAction = static (_, _, _, _) => { };
+
+    private readonly ICaseService _caseService;
+    private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
+    private CaseCreationViewModel? _caseCreation;
+    private string _globalCaseTitle;
+    private string _globalCaseContext;
+    private bool _isCaseCreationOpen;
+    private string _shellStatusMessage;
     private NavigationItemViewModel _selectedNavigationItem;
     private PlaceholderWorkspaceViewModel _currentWorkspace;
     private InspectorPlaceholderViewModel _inspector;
 
     public MainShellViewModel()
+        : this(new UnavailableCaseService(), null)
     {
+    }
+
+    public MainShellViewModel(
+        ICaseService caseService,
+        Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
+    {
+        _caseService = caseService ?? throw new ArgumentNullException(nameof(caseService));
+        _logAction = logAction ?? NoOpLogAction;
+        _globalCaseTitle = "No case selected";
+        _globalCaseContext = "Create a case package to start working in DumpLens.";
+        _shellStatusMessage = "No case package has been created in this shell yet.";
         NavigationItems = new ObservableCollection<NavigationItemViewModel>(CreateNavigationItems());
         _selectedNavigationItem = NavigationItems[0];
         _currentWorkspace = CreateWorkspace(_selectedNavigationItem);
         _inspector = CreateInspector(_selectedNavigationItem);
+        OpenCaseCreationCommand = new RelayCommand(OpenCaseCreation);
     }
 
-    public string GlobalCaseTitle => "DumpLens Shell Preview";
+    public CaseCreationViewModel? CaseCreation
+    {
+        get => _caseCreation;
+        private set => SetProperty(ref _caseCreation, value);
+    }
+
+    public string GlobalCaseContext
+    {
+        get => _globalCaseContext;
+        private set => SetProperty(ref _globalCaseContext, value);
+    }
+
+    public string GlobalCaseTitle
+    {
+        get => _globalCaseTitle;
+        private set => SetProperty(ref _globalCaseTitle, value);
+    }
+
+    public bool IsCaseCreationOpen
+    {
+        get => _isCaseCreationOpen;
+        private set => SetProperty(ref _isCaseCreationOpen, value);
+    }
 
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; }
+
+    public RelayCommand OpenCaseCreationCommand { get; }
 
     public NavigationItemViewModel SelectedNavigationItem
     {
@@ -35,8 +82,7 @@ public sealed class MainShellViewModel : ObservableObject
                 return;
             }
 
-            CurrentWorkspace = CreateWorkspace(value);
-            Inspector = CreateInspector(value);
+            RefreshSurfaceState();
         }
     }
 
@@ -52,8 +98,24 @@ public sealed class MainShellViewModel : ObservableObject
         private set => SetProperty(ref _inspector, value);
     }
 
-    private static PlaceholderWorkspaceViewModel CreateWorkspace(NavigationItemViewModel navigationItem)
+    public string ShellStatusMessage
     {
+        get => _shellStatusMessage;
+        private set => SetProperty(ref _shellStatusMessage, value);
+    }
+
+    private PlaceholderWorkspaceViewModel CreateWorkspace(NavigationItemViewModel navigationItem)
+    {
+        if (string.Equals(navigationItem.Label, "Dashboard", StringComparison.Ordinal) &&
+            !string.Equals(GlobalCaseTitle, "No case selected", StringComparison.Ordinal))
+        {
+            return new PlaceholderWorkspaceViewModel(
+                title: navigationItem.Label,
+                description: "Case package created successfully. This dashboard remains a safe placeholder until later tickets add live case metrics and review queues.",
+                bodyText: ShellStatusMessage,
+                nextStepText: "Later tickets can add case health, recent activity, and review queue summaries without changing the shell layout.");
+        }
+
         return new PlaceholderWorkspaceViewModel(
             title: navigationItem.Label,
             description: navigationItem.WorkspaceDescription,
@@ -61,12 +123,65 @@ public sealed class MainShellViewModel : ObservableObject
             nextStepText: navigationItem.WorkspaceNextStepText);
     }
 
-    private static InspectorPlaceholderViewModel CreateInspector(NavigationItemViewModel navigationItem)
+    private InspectorPlaceholderViewModel CreateInspector(NavigationItemViewModel navigationItem)
     {
+        if (string.Equals(navigationItem.Label, "Dashboard", StringComparison.Ordinal) &&
+            !string.Equals(GlobalCaseTitle, "No case selected", StringComparison.Ordinal))
+        {
+            return new InspectorPlaceholderViewModel(
+                title: "Case Summary",
+                description: GlobalCaseTitle,
+                bodyText: GlobalCaseContext);
+        }
+
         return new InspectorPlaceholderViewModel(
             title: "Selection and Source Reference",
             description: navigationItem.InspectorDescription,
             bodyText: navigationItem.InspectorBodyText);
+    }
+
+    private void OpenCaseCreation()
+    {
+        CaseCreation = new CaseCreationViewModel(
+            _caseService,
+            OnCaseCreated,
+            CloseCaseCreation,
+            _logAction);
+        IsCaseCreationOpen = true;
+    }
+
+    private void CloseCaseCreation()
+    {
+        IsCaseCreationOpen = false;
+    }
+
+    private void OnCaseCreated(CreateCaseResult result)
+    {
+        GlobalCaseTitle = result.Title;
+        GlobalCaseContext = string.IsNullOrWhiteSpace(result.CaseNumber)
+            ? "Case number not provided."
+            : $"Case number {result.CaseNumber}";
+        ShellStatusMessage = string.IsNullOrWhiteSpace(result.CaseNumber)
+            ? $"Created case \"{result.Title}\"."
+            : $"Created case \"{result.Title}\" ({result.CaseNumber}).";
+
+        CloseCaseCreation();
+
+        var dashboardItem = NavigationItems[0];
+        if (ReferenceEquals(SelectedNavigationItem, dashboardItem))
+        {
+            RefreshSurfaceState();
+        }
+        else
+        {
+            SelectedNavigationItem = dashboardItem;
+        }
+    }
+
+    private void RefreshSurfaceState()
+    {
+        CurrentWorkspace = CreateWorkspace(_selectedNavigationItem);
+        Inspector = CreateInspector(_selectedNavigationItem);
     }
 
     private static IReadOnlyList<NavigationItemViewModel> CreateNavigationItems()
@@ -173,5 +288,15 @@ public sealed class MainShellViewModel : ObservableObject
             nextStepText,
             inspectorDescription,
             inspectorBodyText);
+    }
+
+    private sealed class UnavailableCaseService : ICaseService
+    {
+        public Task<CreateCaseResult> CreateAsync(
+            CreateCaseRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No case service is configured for this shell instance.");
+        }
     }
 }

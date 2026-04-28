@@ -12,3 +12,4 @@
 - Quality gates.
 - Debugging guide.
 - Updated agent workflow requirements.
+- Composition-root guidance allowing `DumpLens.App` to wire existing persistence-backed services without moving business logic into the UI layer.

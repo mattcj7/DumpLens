@@ -56,6 +56,10 @@ The initial desktop shell uses WPF so DumpLens can start with a Windows-native a
 
 The initial target framework is .NET 9. The desktop application targets `net9.0-windows`, and the solution should keep a consistent .NET 9 baseline unless a later recorded decision approves a framework change.
 
+## D0014 - WPF App Acts as Composition Root
+
+The WPF desktop shell may reference `DumpLens.Persistence` only to instantiate existing application-facing services at startup. This exception is limited to composition root wiring inside `DumpLens.App`; business logic stays in application and persistence layers, and view models remain dependent on `DumpLens.Application` contracts.
+
 ## Decision Change Process
 
 If a ticket changes architecture, project references, schema, testing expectations, or logging requirements:

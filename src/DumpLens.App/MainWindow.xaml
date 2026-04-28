@@ -7,6 +7,10 @@
         MinWidth="1200"
         MinHeight="720"
         Background="#FFF5F6F8">
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </Window.Resources>
+
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
@@ -31,12 +35,16 @@
                                Text="{Binding GlobalCaseTitle}" />
                     <TextBlock Margin="0,4,0,0"
                                Foreground="#FFD7DEE7"
-                               Text="{Binding CurrentWorkspace.Title}" />
+                               Text="{Binding GlobalCaseContext}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
                             Orientation="Horizontal"
                             VerticalAlignment="Center">
+                    <Button Margin="0,0,8,0"
+                            Padding="14,8"
+                            Command="{Binding OpenCaseCreationCommand}"
+                            Content="New Case" />
                     <Button Margin="0,0,8,0"
                             Padding="14,8"
                             IsEnabled="False"
@@ -136,6 +144,7 @@
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto" />
                         <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
                         <RowDefinition Height="*" />
                     </Grid.RowDefinitions>
 
@@ -143,14 +152,26 @@
                                FontWeight="SemiBold"
                                Text="{Binding CurrentWorkspace.Title}" />
 
-                    <TextBlock Grid.Row="1"
+                    <Border Grid.Row="1"
+                            Margin="0,16,0,0"
+                            Padding="14"
+                            Background="#FFEEF6FF"
+                            BorderBrush="#FFBDD6F6"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <TextBlock Foreground="#FF1D4E89"
+                                   Text="{Binding ShellStatusMessage}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <TextBlock Grid.Row="2"
                                Margin="0,10,0,0"
                                Foreground="#FF4A5563"
                                FontSize="14"
                                Text="{Binding CurrentWorkspace.Description}"
                                TextWrapping="Wrap" />
 
-                    <Grid Grid.Row="2"
+                    <Grid Grid.Row="3"
                           Margin="0,24,0,0">
                         <Grid.RowDefinitions>
                             <RowDefinition Height="Auto" />
@@ -236,6 +257,281 @@
                     </Border>
                 </StackPanel>
             </Border>
+        </Grid>
+
+        <Grid Grid.RowSpan="2"
+              Background="#800F1720"
+              Visibility="{Binding IsCaseCreationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+            <Grid HorizontalAlignment="Center"
+                  VerticalAlignment="Center"
+                  Width="860"
+                  MaxHeight="760"
+                  Margin="24">
+                <Border Background="White"
+                        BorderBrush="#FFD6DCE3"
+                        BorderThickness="1"
+                        CornerRadius="8">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <Grid Margin="24"
+                              DataContext="{Binding CaseCreation}">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock FontSize="24"
+                                           FontWeight="SemiBold"
+                                           Text="Create Case" />
+                                <TextBlock Margin="0,8,0,0"
+                                           Foreground="#FF4A5563"
+                                           Text="Create a local case package with the existing case creation service. Fields marked with * are required."
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <Grid Grid.Row="1"
+                                  Margin="0,24,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel Grid.Row="0"
+                                            Grid.Column="0"
+                                            Margin="0,0,16,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Case Number" />
+                                    <TextBox x:Name="CaseNumberTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding CaseNumber, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=CaseNumberTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="0"
+                                            Grid.Column="1"
+                                            Margin="16,0,0,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Title *" />
+                                    <TextBox x:Name="TitleTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding Title, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=TitleTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="0"
+                                            Margin="0,0,16,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Incident Type" />
+                                    <TextBox x:Name="IncidentTypeTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding IncidentType, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=IncidentTypeTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Grid.Column="1"
+                                            Margin="16,0,0,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Timezone" />
+                                    <TextBox x:Name="TimezoneTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding Timezone, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=TimezoneTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="0"
+                                            Margin="0,0,16,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Incident Start (optional)" />
+                                    <TextBox x:Name="IncidentStartTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding IncidentStartText, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#FF52606D"
+                                               FontSize="12"
+                                               Text="Example: 2026-04-28 13:45" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=IncidentStartTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Grid.Column="1"
+                                            Margin="16,0,0,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Incident End (optional)" />
+                                    <TextBox x:Name="IncidentEndTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding IncidentEndText, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#FF52606D"
+                                               FontSize="12"
+                                               Text="Example: 2026-04-28 15:15" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=IncidentEndTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3"
+                                            Grid.Column="0"
+                                            Margin="0,0,16,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Lead Investigator" />
+                                    <TextBox x:Name="LeadInvestigatorTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding LeadInvestigator, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=LeadInvestigatorTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="3"
+                                            Grid.Column="1"
+                                            Margin="16,0,0,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Agency" />
+                                    <TextBox x:Name="AgencyTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding Agency, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=AgencyTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="4"
+                                            Grid.ColumnSpan="2"
+                                            Margin="0,0,0,16">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Location" />
+                                    <TextBox x:Name="LocationTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding LocationText, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=LocationTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="5"
+                                            Grid.ColumnSpan="2">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Summary" />
+                                    <TextBox x:Name="SummaryTextBox"
+                                             Margin="0,6,0,0"
+                                             AcceptsReturn="True"
+                                             Height="96"
+                                             TextWrapping="Wrap"
+                                             VerticalScrollBarVisibility="Auto"
+                                             Text="{Binding Summary, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=SummaryTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <Grid Grid.Row="2"
+                                  Margin="0,24,0,0">
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Parent/Root Directory *" />
+                                    <Grid Margin="0,6,0,0">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+
+                                        <TextBox x:Name="ParentDirectoryTextBox"
+                                                 Margin="0,0,12,0"
+                                                 Text="{Binding ParentDirectoryPath, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                        <Button Grid.Column="1"
+                                                Padding="14,8"
+                                                IsEnabled="False"
+                                                Content="Browse" />
+                                    </Grid>
+                                    <TextBlock Margin="0,4,0,0"
+                                               Foreground="#FF52606D"
+                                               FontSize="12"
+                                               Text="Enter the existing parent/root directory path directly in this ticket." />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=ParentDirectoryTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="1"
+                                            Margin="0,16,0,0">
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="Package Folder Name (optional)" />
+                                    <TextBox x:Name="RequestedFolderNameTextBox"
+                                             Margin="0,6,0,0"
+                                             Text="{Binding RequestedPackageFolderName, UpdateSourceTrigger=PropertyChanged, ValidatesOnNotifyDataErrors=True}" />
+                                    <TextBlock Margin="0,4,0,0"
+                                               FontSize="12"
+                                               Foreground="#FFB42318"
+                                               Text="{Binding ElementName=RequestedFolderNameTextBox, Path=(Validation.Errors)[0].ErrorContent}" />
+                                </StackPanel>
+
+                                <StackPanel Grid.Row="2"
+                                            Margin="0,20,0,0">
+                                    <TextBlock Foreground="#FFB42318"
+                                               FontWeight="SemiBold"
+                                               Text="{Binding GeneralErrorMessage}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="#FF1D4E89"
+                                               Text="{Binding StatusMessage}"
+                                               TextWrapping="Wrap" />
+                                    <StackPanel Margin="0,20,0,0"
+                                                HorizontalAlignment="Right"
+                                                Orientation="Horizontal">
+                                        <Button Margin="0,0,12,0"
+                                                Padding="14,8"
+                                                Command="{Binding CancelCommand}"
+                                                Content="Cancel" />
+                                        <Button Padding="16,8"
+                                                Command="{Binding SubmitCommand}"
+                                                Content="Create Case" />
+                                    </StackPanel>
+                                </StackPanel>
+                            </Grid>
+                        </Grid>
+                    </ScrollViewer>
+                </Border>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
