@@ -3,6 +3,7 @@
   <ItemGroup>
     <ProjectReference Include="..\DumpLens.App.ViewModels\DumpLens.App.ViewModels.csproj" />
     <ProjectReference Include="..\DumpLens.Application\DumpLens.Application.csproj" />
+    <ProjectReference Include="..\DumpLens.Ingestion\DumpLens.Ingestion.csproj" />
     <ProjectReference Include="..\DumpLens.Persistence\DumpLens.Persistence.csproj" />
   </ItemGroup>
 

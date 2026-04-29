@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Windows.Input;
 
 namespace DumpLens.Tests.Unit.UI;
 
@@ -69,6 +70,24 @@ public class MainShellViewModelTests
         }
     }
 
+    [Fact]
+    public void MainShellViewModel_Opening_And_Canceling_Import_Wizard_Resets_Shell_State()
+    {
+        var shellViewModel = CreateShellViewModel();
+        var openImportCommand = Assert.IsAssignableFrom<ICommand>(GetPropertyValue(shellViewModel, "OpenImportWizardCommand"));
+
+        openImportCommand.Execute(null);
+
+        Assert.True(GetBooleanProperty(shellViewModel, "IsImportWizardOpen"));
+        var importWizard = GetPropertyValue(shellViewModel, "ImportWizard");
+        var cancelCommand = Assert.IsAssignableFrom<ICommand>(GetPropertyValue(importWizard, "CancelCommand"));
+
+        cancelCommand.Execute(null);
+
+        Assert.False(GetBooleanProperty(shellViewModel, "IsImportWizardOpen"));
+        Assert.Null(GetNullablePropertyValue(shellViewModel, "ImportWizard"));
+    }
+
     private static object CreateShellViewModel()
     {
         var assembly = ViewModelAssemblyLoader.Load();
@@ -97,6 +116,19 @@ public class MainShellViewModelTests
         var value = property!.GetValue(instance);
         Assert.NotNull(value);
         return value!;
+    }
+
+    private static bool GetBooleanProperty(object instance, string propertyName)
+    {
+        var value = GetPropertyValue(instance, propertyName);
+        return Assert.IsType<bool>(value);
+    }
+
+    private static object? GetNullablePropertyValue(object instance, string propertyName)
+    {
+        var property = instance.GetType().GetProperty(propertyName, BindingFlags.Instance | BindingFlags.Public);
+        Assert.NotNull(property);
+        return property!.GetValue(instance);
     }
 
     private static string GetStringProperty(object instance, string propertyName)

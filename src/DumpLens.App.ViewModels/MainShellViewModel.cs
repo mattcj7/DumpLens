@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using DumpLens.Application.Cases;
+using DumpLens.Application.Imports;
 
 namespace DumpLens.App.ViewModels;
 
@@ -8,26 +9,38 @@ public sealed class MainShellViewModel : ObservableObject
     private static readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> NoOpLogAction = static (_, _, _, _) => { };
 
     private readonly ICaseService _caseService;
+    private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
     private CaseCreationViewModel? _caseCreation;
+    private ImportWizardViewModel? _importWizard;
     private string _globalCaseTitle;
     private string _globalCaseContext;
     private bool _isCaseCreationOpen;
+    private bool _isImportWizardOpen;
     private string _shellStatusMessage;
     private NavigationItemViewModel _selectedNavigationItem;
     private PlaceholderWorkspaceViewModel _currentWorkspace;
     private InspectorPlaceholderViewModel _inspector;
 
     public MainShellViewModel()
-        : this(new UnavailableCaseService(), null)
+        : this(new UnavailableCaseService(), Array.Empty<ISourceImporter>(), null)
     {
     }
 
     public MainShellViewModel(
         ICaseService caseService,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
+        : this(caseService, Array.Empty<ISourceImporter>(), logAction)
+    {
+    }
+
+    public MainShellViewModel(
+        ICaseService caseService,
+        IEnumerable<ISourceImporter> sourceImporters,
+        Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
     {
         _caseService = caseService ?? throw new ArgumentNullException(nameof(caseService));
+        _sourceImporters = sourceImporters?.ToArray() ?? throw new ArgumentNullException(nameof(sourceImporters));
         _logAction = logAction ?? NoOpLogAction;
         _globalCaseTitle = "No case selected";
         _globalCaseContext = "Create a case package to start working in DumpLens.";
@@ -37,12 +50,19 @@ public sealed class MainShellViewModel : ObservableObject
         _currentWorkspace = CreateWorkspace(_selectedNavigationItem);
         _inspector = CreateInspector(_selectedNavigationItem);
         OpenCaseCreationCommand = new RelayCommand(OpenCaseCreation);
+        OpenImportWizardCommand = new RelayCommand(OpenImportWizard);
     }
 
     public CaseCreationViewModel? CaseCreation
     {
         get => _caseCreation;
         private set => SetProperty(ref _caseCreation, value);
+    }
+
+    public PlaceholderWorkspaceViewModel CurrentWorkspace
+    {
+        get => _currentWorkspace;
+        private set => SetProperty(ref _currentWorkspace, value);
     }
 
     public string GlobalCaseContext
@@ -57,15 +77,35 @@ public sealed class MainShellViewModel : ObservableObject
         private set => SetProperty(ref _globalCaseTitle, value);
     }
 
+    public ImportWizardViewModel? ImportWizard
+    {
+        get => _importWizard;
+        private set => SetProperty(ref _importWizard, value);
+    }
+
+    public InspectorPlaceholderViewModel Inspector
+    {
+        get => _inspector;
+        private set => SetProperty(ref _inspector, value);
+    }
+
     public bool IsCaseCreationOpen
     {
         get => _isCaseCreationOpen;
         private set => SetProperty(ref _isCaseCreationOpen, value);
     }
 
+    public bool IsImportWizardOpen
+    {
+        get => _isImportWizardOpen;
+        private set => SetProperty(ref _isImportWizardOpen, value);
+    }
+
     public ObservableCollection<NavigationItemViewModel> NavigationItems { get; }
 
     public RelayCommand OpenCaseCreationCommand { get; }
+
+    public RelayCommand OpenImportWizardCommand { get; }
 
     public NavigationItemViewModel SelectedNavigationItem
     {
@@ -84,18 +124,6 @@ public sealed class MainShellViewModel : ObservableObject
 
             RefreshSurfaceState();
         }
-    }
-
-    public PlaceholderWorkspaceViewModel CurrentWorkspace
-    {
-        get => _currentWorkspace;
-        private set => SetProperty(ref _currentWorkspace, value);
-    }
-
-    public InspectorPlaceholderViewModel Inspector
-    {
-        get => _inspector;
-        private set => SetProperty(ref _inspector, value);
     }
 
     public string ShellStatusMessage
@@ -142,6 +170,7 @@ public sealed class MainShellViewModel : ObservableObject
 
     private void OpenCaseCreation()
     {
+        CloseImportWizard();
         CaseCreation = new CaseCreationViewModel(
             _caseService,
             OnCaseCreated,
@@ -153,6 +182,23 @@ public sealed class MainShellViewModel : ObservableObject
     private void CloseCaseCreation()
     {
         IsCaseCreationOpen = false;
+        CaseCreation = null;
+    }
+
+    private void OpenImportWizard()
+    {
+        CloseCaseCreation();
+        ImportWizard = new ImportWizardViewModel(
+            _sourceImporters,
+            CloseImportWizard,
+            _logAction);
+        IsImportWizardOpen = true;
+    }
+
+    private void CloseImportWizard()
+    {
+        IsImportWizardOpen = false;
+        ImportWizard = null;
     }
 
     private void OnCaseCreated(CreateCaseResult result)

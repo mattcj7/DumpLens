@@ -1,4 +1,7 @@
 using DumpLens.App.ViewModels;
+using DumpLens.Application.Imports;
+using DumpLens.Ingestion.Csv;
+using DumpLens.Ingestion.Xlsx;
 using DumpLens.Persistence.Cases;
 
 namespace DumpLens.App;
@@ -21,6 +24,7 @@ public partial class App : System.Windows.Application
         {
             DataContext = new MainShellViewModel(
                 new SqliteCaseService(),
+                CreateSourceImporters(),
                 _logger.LogInformation)
         };
 
@@ -56,5 +60,14 @@ public partial class App : System.Windows.Application
             operation: "app_shutdown",
             correlationId: _startupCorrelationId,
             message: "DumpLens shell closed.");
+    }
+
+    private static IReadOnlyList<ISourceImporter> CreateSourceImporters()
+    {
+        return
+        [
+            new CsvSourceImporter(),
+            new XlsxSourceImporter()
+        ];
     }
 }

@@ -60,6 +60,10 @@ The initial target framework is .NET 9. The desktop application targets `net9.0-
 
 The WPF desktop shell may reference `DumpLens.Persistence` only to instantiate existing application-facing services at startup. This exception is limited to composition root wiring inside `DumpLens.App`; business logic stays in application and persistence layers, and view models remain dependent on `DumpLens.Application` contracts.
 
+## D0015 - WPF App May Wire Import Preview Services At Composition Root
+
+The WPF desktop shell may reference `DumpLens.Ingestion` only to instantiate existing `DumpLens.Application.Imports` preview/probe services at startup. This exception is limited to composition root wiring inside `DumpLens.App`; views and view models remain dependent on application-facing contracts and must not take on ingestion logic directly.
+
 ## Decision Change Process
 
 If a ticket changes architecture, project references, schema, testing expectations, or logging requirements:

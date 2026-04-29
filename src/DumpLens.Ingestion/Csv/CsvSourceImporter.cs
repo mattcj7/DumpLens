@@ -108,6 +108,7 @@ public sealed class CsvSourceImporter : ISourceImporter
             ReturnedRowCount = analysis.PreviewRows.Count,
             Columns = analysis.Columns,
             Rows = analysis.PreviewRows,
+            FieldMappingSuggestions = analysis.FieldMappingSuggestions,
             Warnings = analysis.Warnings
         });
     }

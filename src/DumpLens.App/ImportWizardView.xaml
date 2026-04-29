@@ -1,0 +1,474 @@
+<UserControl x:Class="DumpLens.App.ImportWizardView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <UserControl.Resources>
+        <BooleanToVisibilityConverter x:Key="BooleanToVisibilityConverter" />
+    </UserControl.Resources>
+
+    <Border Background="White"
+            BorderBrush="#FFD6DCE3"
+            BorderThickness="1"
+            CornerRadius="8">
+        <Grid Margin="24">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="260" />
+                <ColumnDefinition Width="24" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+
+            <StackPanel Grid.Row="0"
+                        Grid.ColumnSpan="3">
+                <TextBlock FontSize="24"
+                           FontWeight="SemiBold"
+                           Text="Import Preview Wizard" />
+                <TextBlock Margin="0,8,0,0"
+                           Foreground="#FF4A5563"
+                           Text="Guide the source through selection, preview, mapping, timezone confirmation, warnings, and a preview-only summary. No persistence is implemented in this ticket."
+                           TextWrapping="Wrap" />
+            </StackPanel>
+
+            <Border Grid.Row="1"
+                    Grid.ColumnSpan="3"
+                    Margin="0,16,0,0"
+                    Padding="12"
+                    Background="#FFFDF5E8"
+                    BorderBrush="#FFEAC46A"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <TextBlock Foreground="#FF6B4E16"
+                           Text="Preview only. This wizard does not register sources, copy evidence, hash files, or write messages, calls, identities, warnings, or any other records."
+                           TextWrapping="Wrap" />
+            </Border>
+
+            <Border Grid.Row="2"
+                    Grid.Column="0"
+                    Margin="0,20,0,0"
+                    Padding="16"
+                    Background="#FFF7F8FA"
+                    BorderBrush="#FFD6DCE3"
+                    BorderThickness="1"
+                    CornerRadius="8">
+                <StackPanel>
+                    <TextBlock FontSize="16"
+                               FontWeight="SemiBold"
+                               Text="Steps" />
+                    <ItemsControl Margin="0,16,0,0"
+                                  ItemsSource="{Binding Steps, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Margin="0,0,0,10"
+                                        Padding="12"
+                                        Background="White"
+                                        BorderBrush="#FFD6DCE3"
+                                        BorderThickness="1"
+                                        CornerRadius="6">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold">
+                                            <Run Text="{Binding StepNumber, Mode=OneWay}" />
+                                            <Run Text=". " />
+                                            <Run Text="{Binding Title, Mode=OneWay}" />
+                                        </TextBlock>
+                                        <TextBlock Margin="0,6,0,0"
+                                                   Foreground="#FF52606D"
+                                                   FontSize="12"
+                                                   Text="{Binding Description, Mode=OneWay}"
+                                                   TextWrapping="Wrap" />
+                                        <TextBlock Margin="0,8,0,0"
+                                                   Foreground="#FF1D4E89"
+                                                   FontSize="12"
+                                                   Text="Current"
+                                                   Visibility="{Binding IsCurrent, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                        <TextBlock Margin="0,4,0,0"
+                                                   Foreground="#FF127C42"
+                                                   FontSize="12"
+                                                   Text="Completed"
+                                                   Visibility="{Binding IsCompleted, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+
+            <Grid Grid.Row="2"
+                  Grid.Column="2"
+                  Margin="0,20,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <StackPanel>
+                    <TextBlock FontSize="20"
+                               FontWeight="SemiBold"
+                               Text="{Binding CurrentStepTitle, Mode=OneWay}" />
+                    <TextBlock Margin="0,6,0,0"
+                               Foreground="#FF4A5563"
+                               Text="{Binding CurrentStepDescription, Mode=OneWay}"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+
+                <StackPanel Grid.Row="1"
+                            Margin="0,16,0,0">
+                    <Border Padding="12"
+                            Background="#FFFEF3F2"
+                            BorderBrush="#FFF4C7C3"
+                            BorderThickness="1"
+                            CornerRadius="6"
+                            Visibility="{Binding HasGeneralErrorMessage, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <TextBlock Foreground="#FFB42318"
+                                   Text="{Binding GeneralErrorMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border Margin="0,8,0,0"
+                            Padding="12"
+                            Background="#FFEEF6FF"
+                            BorderBrush="#FFBDD6F6"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <TextBlock Foreground="#FF1D4E89"
+                                   Text="{Binding StatusMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+                </StackPanel>
+
+                <ScrollViewer Grid.Row="2"
+                              Margin="0,16,0,0"
+                              VerticalScrollBarVisibility="Auto">
+                    <StackPanel>
+                        <StackPanel Visibility="{Binding IsChooseSourceStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Supported source types" />
+                            <ListBox Margin="0,12,0,0"
+                                     ItemsSource="{Binding SourceTypeOptions, Mode=OneWay}"
+                                     SelectedItem="{Binding SelectedSourceTypeOption, Mode=TwoWay}"
+                                     BorderThickness="0"
+                                     Background="Transparent">
+                                <ListBox.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,10"
+                                                Padding="14"
+                                                Background="White"
+                                                BorderBrush="#FFD6DCE3"
+                                                BorderThickness="1"
+                                                CornerRadius="6">
+                                            <StackPanel>
+                                                <TextBlock FontSize="15"
+                                                           FontWeight="SemiBold"
+                                                           Text="{Binding Label, Mode=OneWay}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding Description, Mode=OneWay}"
+                                                           TextWrapping="Wrap" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="#FF7B8794"
+                                                           FontSize="12"
+                                                           Text="{Binding SupportedExtensions, Mode=OneWay}" />
+                                                <TextBlock Margin="0,6,0,0"
+                                                           Foreground="#FFB42318"
+                                                           FontSize="12"
+                                                           Text="Not configured in this shell."
+                                                           Visibility="{Binding IsUnavailable, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}" />
+                                            </StackPanel>
+                                        </Border>
+                                    </DataTemplate>
+                                </ListBox.ItemTemplate>
+                            </ListBox>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsSelectFileStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="File path" />
+                            <Grid Margin="0,8,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Margin="0,0,12,0"
+                                         Text="{Binding FilePath, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1"
+                                        Margin="0,0,12,0"
+                                        Padding="14,8"
+                                        Command="{Binding BrowsePlaceholderCommand}"
+                                        Content="Browse" />
+                                <Button Grid.Column="2"
+                                        Padding="16,8"
+                                        Command="{Binding ProbeFileCommand}"
+                                        Content="Inspect File" />
+                            </Grid>
+
+                            <Border Margin="0,16,0,0"
+                                    Padding="14"
+                                    Background="#FFF7F8FA"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="{Binding DetectedSourceKindText, Mode=OneWay}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="#FF52606D"
+                                               Text="{Binding FileSupportStatusText, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="#FF52606D"
+                                               Text="{Binding ProbeDetailsText, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Worksheet selection" />
+                                <ComboBox Margin="0,8,0,0"
+                                          ItemsSource="{Binding WorksheetOptions, Mode=OneWay}"
+                                          SelectedItem="{Binding SelectedWorksheetName, Mode=TwoWay}" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="#FF52606D"
+                                           FontSize="12"
+                                           Text="Worksheet selection applies to the preview step. CSV sources ignore this field." />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Current warnings" />
+                                <ItemsControl Margin="0,8,0,0"
+                                              ItemsSource="{Binding Warnings, Mode=OneWay}">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="10"
+                                                    Background="#FFFEF3F2"
+                                                    BorderBrush="#FFF4C7C3"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6">
+                                                <StackPanel>
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Text="{Binding Title, Mode=OneWay}" />
+                                                    <TextBlock Margin="0,6,0,0"
+                                                               Foreground="#FF7A271A"
+                                                               Text="{Binding Message, Mode=OneWay}"
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsAssignSourceStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Padding="12"
+                                    Background="#FFF7F8FA"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <TextBlock Foreground="#FF52606D"
+                                           Text="These fields are manual placeholders only in T0019. They do not create persons, devices, or platform accounts."
+                                           TextWrapping="Wrap" />
+                            </Border>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Source owner" />
+                                <TextBox Margin="0,8,0,0"
+                                         Text="{Binding SourceOwnerText, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Device label" />
+                                <TextBox Margin="0,8,0,0"
+                                         Text="{Binding SourceDeviceText, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Account label" />
+                                <TextBox Margin="0,8,0,0"
+                                         Text="{Binding SourceAccountText, UpdateSourceTrigger=PropertyChanged}" />
+                            </StackPanel>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsPreviewStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <StackPanel Orientation="Horizontal">
+                                <Button Padding="16,8"
+                                        Command="{Binding RefreshPreviewCommand}"
+                                        Content="Refresh Preview" />
+                                <TextBlock Margin="12,8,0,0"
+                                           Foreground="#FF52606D"
+                                           Text="{Binding PreviewGrid.SummaryText, Mode=OneWay}" />
+                            </StackPanel>
+
+                            <Border Margin="0,16,0,0"
+                                    Padding="12"
+                                    Background="#FFF7F8FA"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <TextBlock Foreground="#FF52606D"
+                                           Text="Preview rows are shown for review only. Raw preview values are intentionally excluded from operational logs."
+                                           TextWrapping="Wrap" />
+                            </Border>
+
+                            <DataGrid Margin="0,16,0,0"
+                                      AutoGenerateColumns="True"
+                                      CanUserAddRows="False"
+                                      CanUserDeleteRows="False"
+                                      HeadersVisibility="Column"
+                                      IsReadOnly="True"
+                                      ItemsSource="{Binding PreviewGrid.RowsView, Mode=OneWay}"
+                                      MaxHeight="360" />
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsMappingStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Suggested field mappings" />
+                            <ItemsControl Margin="0,12,0,0"
+                                          ItemsSource="{Binding ColumnMappings, Mode=OneWay}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Border Margin="0,0,0,10"
+                                                Padding="12"
+                                                Background="White"
+                                                BorderBrush="#FFD6DCE3"
+                                                BorderThickness="1"
+                                                CornerRadius="6">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="200" />
+                                                    <ColumnDefinition Width="*" />
+                                                </Grid.ColumnDefinitions>
+
+                                                <StackPanel Grid.Column="0"
+                                                            Margin="0,0,12,0">
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Text="{Binding DisplayName, Mode=OneWay}" />
+                                                    <TextBlock Margin="0,6,0,0"
+                                                               Foreground="#FF52606D"
+                                                               FontSize="12"
+                                                               Text="{Binding CandidateSummary, Mode=OneWay}"
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+
+                                                <ComboBox Grid.Column="1"
+                                                          VerticalAlignment="Top"
+                                                          ItemsSource="{Binding AvailableSourceColumns}"
+                                                          SelectedItem="{Binding SelectedSourceColumnName, Mode=TwoWay}" />
+                                            </Grid>
+                                        </Border>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
+                        </StackPanel>
+
+                        <StackPanel Visibility="{Binding IsTimezoneStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock FontWeight="SemiBold"
+                                       Text="Timezone confirmation" />
+                            <TextBox Margin="0,8,0,0"
+                                     Text="{Binding TimezoneText, UpdateSourceTrigger=PropertyChanged}" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="#FF52606D"
+                                       Text="Enter or confirm the timezone text that should guide later timestamp persistence tickets. This ticket does not write normalized timestamps."
+                                       TextWrapping="Wrap" />
+                        </StackPanel>
+
+                        <Grid Visibility="{Binding IsWarningsStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="320" />
+                                <ColumnDefinition Width="16" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+
+                            <StackPanel Grid.Column="0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="{Binding WarningSummaryText, Mode=OneWay}" />
+                                <ListBox Margin="0,12,0,0"
+                                         ItemsSource="{Binding Warnings, Mode=OneWay}"
+                                         SelectedItem="{Binding SelectedWarning, Mode=TwoWay}"
+                                         MaxHeight="360">
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,8"
+                                                    Padding="10"
+                                                    Background="White"
+                                                    BorderBrush="#FFD6DCE3"
+                                                    BorderThickness="1"
+                                                    CornerRadius="6">
+                                                <StackPanel>
+                                                    <TextBlock FontWeight="SemiBold"
+                                                               Text="{Binding Title, Mode=OneWay}" />
+                                                    <TextBlock Margin="0,6,0,0"
+                                                               Foreground="#FF52606D"
+                                                               FontSize="12"
+                                                               Text="{Binding LocationSummary, Mode=OneWay}" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </StackPanel>
+
+                            <Border Grid.Column="2"
+                                    Padding="14"
+                                    Background="#FFF7F8FA"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <StackPanel>
+                                    <TextBlock FontWeight="SemiBold"
+                                               Text="{Binding SelectedWarning.Title, Mode=OneWay}" />
+                                    <TextBlock Margin="0,8,0,0"
+                                               Foreground="#FF52606D"
+                                               Text="{Binding SelectedWarning.DetailText, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <StackPanel Visibility="{Binding IsSummaryStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <Border Padding="16"
+                                    Background="#FFF7F8FA"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <TextBlock Foreground="#FF243B53"
+                                           Text="{Binding SummaryText, Mode=OneWay}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </StackPanel>
+                </ScrollViewer>
+            </Grid>
+
+            <StackPanel Grid.Row="3"
+                        Grid.ColumnSpan="3"
+                        Margin="0,20,0,0"
+                        HorizontalAlignment="Right"
+                        Orientation="Horizontal">
+                <Button Margin="0,0,12,0"
+                        Padding="14,8"
+                        Command="{Binding BackCommand}"
+                        Content="Back" />
+                <Button Margin="0,0,12,0"
+                        Padding="14,8"
+                        Command="{Binding CancelCommand}"
+                        Content="Cancel" />
+                <Button Padding="16,8"
+                        Command="{Binding NextCommand}"
+                        Content="{Binding NextButtonText, Mode=OneWay}" />
+            </StackPanel>
+        </Grid>
+    </Border>
+</UserControl>

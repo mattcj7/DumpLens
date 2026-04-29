@@ -32,5 +32,7 @@ public sealed record ImportPreviewResult
 
     public IReadOnlyList<ImportPreviewRow> Rows { get; init; } = Array.Empty<ImportPreviewRow>();
 
+    public IReadOnlyList<ImportFieldMappingSuggestion> FieldMappingSuggestions { get; init; } = Array.Empty<ImportFieldMappingSuggestion>();
+
     public IReadOnlyList<ImportWarning> Warnings { get; init; } = Array.Empty<ImportWarning>();
 }

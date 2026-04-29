@@ -98,6 +98,8 @@ public sealed class XlsxSourceImporterTests
         Assert.Single(result.Rows);
         Assert.Equal("180", result.Rows[0].Values[3]);
         Assert.Contains(result.Warnings, warning => warning.Code == ImportWarningCodes.PreviewTruncated);
+        Assert.Equal("date", GetMappedColumn(result, ImportFieldNames.Timestamp));
+        Assert.Equal("from_number", GetMappedColumn(result, ImportFieldNames.Caller));
     }
 
     [Fact]
@@ -332,6 +334,11 @@ public sealed class XlsxSourceImporterTests
     }
 
     private static string GetMappedColumn(ImportProbeResult result, string fieldName)
+    {
+        return Assert.Single(result.FieldMappingSuggestions, suggestion => suggestion.DumpLensFieldName == fieldName).SourceColumnName!;
+    }
+
+    private static string GetMappedColumn(ImportPreviewResult result, string fieldName)
     {
         return Assert.Single(result.FieldMappingSuggestions, suggestion => suggestion.DumpLensFieldName == fieldName).SourceColumnName!;
     }

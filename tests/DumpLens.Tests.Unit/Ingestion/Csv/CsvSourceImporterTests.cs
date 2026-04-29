@@ -280,6 +280,8 @@ public sealed class CsvSourceImporterTests
         Assert.Contains(result.Warnings, warning => warning.Code == ImportWarningCodes.PreviewTruncated);
         Assert.Equal("One", result.Rows[0].Values[3]);
         Assert.Equal("Two", result.Rows[1].Values[3]);
+        Assert.Equal("timestamp", GetMappedColumn(result, ImportFieldNames.Timestamp));
+        Assert.Equal("message_body", GetMappedColumn(result, ImportFieldNames.MessageBody));
     }
 
     [Fact]
@@ -310,6 +312,11 @@ public sealed class CsvSourceImporterTests
     }
 
     private static string GetMappedColumn(ImportProbeResult result, string fieldName)
+    {
+        return Assert.Single(result.FieldMappingSuggestions, suggestion => suggestion.DumpLensFieldName == fieldName).SourceColumnName!;
+    }
+
+    private static string GetMappedColumn(ImportPreviewResult result, string fieldName)
     {
         return Assert.Single(result.FieldMappingSuggestions, suggestion => suggestion.DumpLensFieldName == fieldName).SourceColumnName!;
     }
