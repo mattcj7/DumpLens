@@ -77,3 +77,23 @@ The SQLite-backed implementation in `DumpLens.Persistence.Cases` orchestrates:
 6. return case/package/database/manifest/audit metadata
 
 Case creation logs operational stages with correlation IDs and safe identifiers only.
+
+## Source Registration Workflow
+
+Application-facing source registration is exposed through `DumpLens.Application.Sources.ISourceRegistrationService`.
+The SQLite/filesystem-backed implementation in `DumpLens.Persistence.Sources` orchestrates:
+
+1. validate the source registration request and normalize safe identifiers/paths
+2. verify the existing case package root, case database path, and selected source file
+3. confirm the target `case_id` exists in the case database
+4. create a unique source import folder under `imports/source_<id>/`
+5. copy the selected source file into `original/<safe-filename>` without mutating the original
+6. compute SHA-256 for the original file and copied file through the injected `IFileHashService`
+7. verify the copied-file hash matches the original-file hash
+8. write `sha256.txt` and `manifest.json` into the source folder
+9. insert the `source_imports` row with safe metadata and zero record/warning counts
+10. write the `source_registered` audit event through the audit logger
+11. return source import, file, manifest, hash, and audit metadata
+
+This workflow intentionally does not parse the source file, create `source_artifacts`, or persist normalized messages/calls yet.
+Operational logs for source registration use correlation IDs, case/source import IDs, hash prefixes, extensions, counts, and stage names only.
