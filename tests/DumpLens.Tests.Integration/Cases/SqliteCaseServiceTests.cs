@@ -68,7 +68,8 @@ public sealed class SqliteCaseServiceTests
             new[]
             {
                 ("0001", "bootstrap_schema_migrations_support"),
-                ("0002", "initial_core_schema")
+                ("0002", "initial_core_schema"),
+                ("0003", "communication_schema")
             },
             await LoadAppliedMigrationsAsync(connection));
 

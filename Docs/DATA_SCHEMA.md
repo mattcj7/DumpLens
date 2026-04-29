@@ -78,6 +78,12 @@ src/DumpLens.Persistence/Migrations/0002_initial_core_schema.sql
 
 The migration runner enables SQLite foreign-key enforcement on its migration connection before applying ordered scripts.
 
+`T0014` adds the communication schema migration:
+
+```text
+src/DumpLens.Persistence/Migrations/0003_communication_schema.sql
+```
+
 Initial planned tickets:
 
 ```text
@@ -156,6 +162,129 @@ These remain plain `TEXT` columns in `T0007`. Their foreign-key constraints are 
 Tests added:
 
 - `tests/DumpLens.Tests.Integration/Persistence/InitialCoreSchemaMigrationTests.cs`
+
+## T0014 Communication Schema
+
+Migration file:
+
+```text
+src/DumpLens.Persistence/Migrations/0003_communication_schema.sql
+```
+
+Tables added:
+
+- `persons`
+- `identities`
+- `identity_links`
+- `devices`
+- `platform_accounts`
+- `conversations`
+- `messages`
+- `message_recipients`
+- `conversation_participants`
+- `calls`
+- `attachments`
+
+Indexes added:
+
+- `idx_persons_case`
+- `idx_persons_display_name`
+- `idx_persons_role`
+- `idx_identities_case`
+- `idx_identities_type`
+- `idx_identities_norm`
+- `idx_identities_person`
+- `idx_identity_links_case`
+- `idx_identity_links_source`
+- `idx_identity_links_status`
+- `idx_devices_case`
+- `idx_devices_owner`
+- `idx_platform_accounts_case`
+- `idx_platform_accounts_platform`
+- `idx_platform_accounts_username`
+- `idx_conversations_case`
+- `idx_conversations_time`
+- `idx_conversations_priority`
+- `idx_messages_case_time`
+- `idx_messages_source`
+- `idx_messages_sender`
+- `idx_messages_conversation`
+- `idx_messages_body_hash`
+- `idx_messages_deleted_status`
+- `idx_messages_reconciliation_status`
+- `idx_message_recipients_message`
+- `idx_message_recipients_identity`
+- `idx_conversation_participants_conv`
+- `idx_conversation_participants_identity`
+- `idx_calls_case_time`
+- `idx_calls_caller`
+- `idx_calls_callee`
+- `idx_calls_source`
+- `idx_attachments_case`
+- `idx_attachments_message`
+- `idx_attachments_hash`
+
+Important relationships:
+
+- `persons.case_id -> cases.id` with `ON DELETE CASCADE`
+- `identities.case_id -> cases.id` with `ON DELETE CASCADE`
+- `identities.linked_person_id -> persons.id`
+- `identities.source_import_id -> source_imports.id`
+- `identities.source_artifact_id -> source_artifacts.id`
+- `identity_links.case_id -> cases.id` with `ON DELETE CASCADE`
+- `identity_links.source_identity_id -> identities.id` with `ON DELETE CASCADE`
+- `identity_links.target_identity_id -> identities.id` with `ON DELETE CASCADE`
+- `identity_links.target_person_id -> persons.id` with `ON DELETE CASCADE`
+- `identity_links.reviewed_by_user_id -> app_users.id`
+- `devices.case_id -> cases.id` with `ON DELETE CASCADE`
+- `devices.owner_person_id -> persons.id`
+- `devices.phone_number_identity_id -> identities.id`
+- `platform_accounts.case_id -> cases.id` with `ON DELETE CASCADE`
+- `platform_accounts.linked_person_id -> persons.id`
+- `platform_accounts.linked_phone_identity_id -> identities.id`
+- `platform_accounts.linked_email_identity_id -> identities.id`
+- `platform_accounts.source_import_id -> source_imports.id`
+- `conversations.case_id -> cases.id` with `ON DELETE CASCADE`
+- `messages.case_id -> cases.id` with `ON DELETE CASCADE`
+- `messages.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `messages.source_artifact_id -> source_artifacts.id`
+- `messages.conversation_id -> conversations.id`
+- `messages.sender_identity_id -> identities.id`
+- `message_recipients.case_id -> cases.id` with `ON DELETE CASCADE`
+- `message_recipients.message_id -> messages.id` with `ON DELETE CASCADE`
+- `message_recipients.recipient_identity_id -> identities.id`
+- `conversation_participants.case_id -> cases.id` with `ON DELETE CASCADE`
+- `conversation_participants.conversation_id -> conversations.id` with `ON DELETE CASCADE`
+- `conversation_participants.identity_id -> identities.id`
+- `conversation_participants.person_id -> persons.id`
+- `conversation_participants.source_import_id -> source_imports.id`
+- `calls.case_id -> cases.id` with `ON DELETE CASCADE`
+- `calls.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `calls.source_artifact_id -> source_artifacts.id`
+- `calls.caller_identity_id -> identities.id`
+- `calls.callee_identity_id -> identities.id`
+- `attachments.case_id -> cases.id` with `ON DELETE CASCADE`
+- `attachments.source_import_id -> source_imports.id` with `ON DELETE CASCADE`
+- `attachments.source_artifact_id -> source_artifacts.id`
+- `attachments.linked_message_id -> messages.id` with `ON DELETE SET NULL`
+
+Constraint notes:
+
+- `identity_links` enforces `CHECK (target_identity_id IS NOT NULL OR target_person_id IS NOT NULL)`.
+- `message_recipients` enforces `UNIQUE (message_id, recipient_identity_id, recipient_role)`.
+- `conversation_participants` enforces `UNIQUE (conversation_id, identity_id)`.
+
+Deferred constraints:
+
+- `source_imports.owner_person_id`
+- `source_imports.device_id`
+- `source_imports.platform_account_id`
+
+These three `source_imports` columns remain plain `TEXT` in `T0014`. SQLite cannot add normal foreign-key constraints to existing columns without rebuilding the table, and this ticket intentionally avoids a brittle `source_imports` table rebuild so `T0007` behavior remains stable. A later schema-hardening migration can add those constraints once that rebuild is intentionally designed and fully tested.
+
+Tests added:
+
+- `tests/DumpLens.Tests.Integration/Persistence/CommunicationSchemaMigrationTests.cs`
 
 ## T0008 Case Package Manifest
 

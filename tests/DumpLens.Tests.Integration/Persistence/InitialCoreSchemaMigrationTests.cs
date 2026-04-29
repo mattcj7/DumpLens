@@ -37,7 +37,7 @@ public sealed class InitialCoreSchemaMigrationTests
     };
 
     [Fact]
-    public async Task RunMigrationsAsync_CreatesCoreSchemaAndRecordsBootstrapThenCoreMigration()
+    public async Task RunMigrationsAsync_CreatesCoreSchemaAndKeepsBootstrapThenCoreMigrationsFirst()
     {
         using var tempDatabase = TemporarySqliteDatabase.Create();
         var runner = new SqliteMigrationRunner();
@@ -60,13 +60,9 @@ public sealed class InitialCoreSchemaMigrationTests
         }
 
         var migrations = await GetAppliedMigrationsAsync(connection);
-        Assert.Equal(
-            new[]
-            {
-                ("0001", "bootstrap_schema_migrations_support"),
-                ("0002", "initial_core_schema")
-            },
-            migrations);
+        Assert.True(migrations.Count >= 2);
+        Assert.Equal(("0001", "bootstrap_schema_migrations_support"), migrations[0]);
+        Assert.Equal(("0002", "initial_core_schema"), migrations[1]);
     }
 
     [Fact]
