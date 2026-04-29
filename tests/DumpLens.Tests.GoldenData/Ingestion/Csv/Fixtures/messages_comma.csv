@@ -1,0 +1,3 @@
+timestamp,sender,recipient,message_body,platform,direction,thread_id,message_id,attachment
+2026-01-01T12:00:00Z,Alice,Bob,"Meet at lot C, 5pm",sms,outgoing,thread-1,msg-1,photo1.jpg
+2026-01-01T12:01:00Z,Bob,Alice,On my way,sms,incoming,thread-1,msg-2,
