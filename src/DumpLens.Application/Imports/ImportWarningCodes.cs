@@ -6,6 +6,10 @@ public static class ImportWarningCodes
     public const string FileNotFound = "file_not_found";
     public const string UnreadableFile = "unreadable_file";
     public const string EmptyFile = "empty_file";
+    public const string EmptyWorkbook = "empty_workbook";
+    public const string NoWorksheets = "no_worksheets";
+    public const string SelectedWorksheetNotFound = "selected_worksheet_not_found";
+    public const string EmptyWorksheet = "empty_worksheet";
     public const string MissingHeaderRow = "missing_header_row";
     public const string AmbiguousHeaderRow = "ambiguous_header_row";
     public const string InconsistentRowWidth = "inconsistent_row_width";

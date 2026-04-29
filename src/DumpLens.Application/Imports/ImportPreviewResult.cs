@@ -18,6 +18,10 @@ public sealed record ImportPreviewResult
 
     public char? DetectedDelimiter { get; init; }
 
+    public IReadOnlyList<string> WorksheetNames { get; init; } = Array.Empty<string>();
+
+    public string? SelectedWorksheetName { get; init; }
+
     public bool HasHeaderRow { get; init; }
 
     public int RequestedRowCount { get; init; }
