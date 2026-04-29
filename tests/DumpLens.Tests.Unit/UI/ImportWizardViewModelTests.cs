@@ -555,6 +555,8 @@ public sealed class ImportWizardViewModelTests
 
         public Func<ImportPreviewRequest, ImportPreviewResult>? PreviewResultFactory { get; init; }
 
+        public Func<ImportTabularDataRequest, ImportTabularDataResult>? ReadResultFactory { get; init; }
+
         public int ProbeCallCount { get; private set; }
 
         public Func<ImportProbeRequest, ImportProbeResult>? ProbeResultFactory { get; init; }
@@ -577,6 +579,22 @@ public sealed class ImportWizardViewModelTests
             var result = PreviewResultFactory?.Invoke(request) ?? new ImportPreviewResult
             {
                 CorrelationId = request.CorrelationId ?? "preview-default",
+                SourceKind = SourceKind,
+                FilePath = request.FilePath,
+                FileName = Path.GetFileName(request.FilePath),
+                FileExtension = Path.GetExtension(request.FilePath),
+                IsSupported = true,
+                IsTabular = true
+            };
+
+            return Task.FromResult(result);
+        }
+
+        public Task<ImportTabularDataResult> ReadTabularDataAsync(ImportTabularDataRequest request, CancellationToken cancellationToken = default)
+        {
+            var result = ReadResultFactory?.Invoke(request) ?? new ImportTabularDataResult
+            {
+                CorrelationId = request.CorrelationId ?? "read-default",
                 SourceKind = SourceKind,
                 FilePath = request.FilePath,
                 FileName = Path.GetFileName(request.FilePath),

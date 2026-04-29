@@ -113,6 +113,43 @@ public sealed class CsvSourceImporter : ISourceImporter
         });
     }
 
+    public Task<ImportTabularDataResult> ReadTabularDataAsync(
+        ImportTabularDataRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.FilePath);
+
+        if (!Path.IsPathRooted(request.FilePath))
+        {
+            throw new ArgumentException("The file path must be absolute.", nameof(request.FilePath));
+        }
+
+        if (request.RowLimit is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request.RowLimit), "The row limit must be positive when provided.");
+        }
+
+        var correlationId = ResolveCorrelationId(request.CorrelationId);
+        var analysis = ReadAllRows(request.FilePath, request.RowLimit, correlationId, cancellationToken);
+
+        return Task.FromResult(new ImportTabularDataResult
+        {
+            CorrelationId = correlationId,
+            SourceKind = SourceKind,
+            FilePath = analysis.FilePath,
+            FileName = analysis.FileName,
+            FileExtension = analysis.FileExtension,
+            IsSupported = analysis.IsSupported,
+            IsTabular = analysis.IsTabular,
+            HasHeaderRow = analysis.HasHeaderRow,
+            ReturnedRowCount = analysis.PreviewRows.Count,
+            Columns = analysis.Columns,
+            Rows = analysis.PreviewRows,
+            Warnings = analysis.Warnings
+        });
+    }
+
     private CsvAnalysisResult AnalyzeFile(
         string filePath,
         int previewRowCount,
@@ -260,6 +297,147 @@ public sealed class CsvSourceImporter : ISourceImporter
         }
     }
 
+    private CsvAnalysisResult ReadAllRows(
+        string filePath,
+        int? rowLimit,
+        string correlationId,
+        CancellationToken cancellationToken)
+    {
+        var fullPath = Path.GetFullPath(filePath);
+        var extension = Path.GetExtension(fullPath);
+        var warnings = new List<ImportWarning>();
+
+        if (!CanHandle(fullPath))
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.UnsupportedFileExtension,
+                "Only .csv files and tabular .txt files are supported for CSV message import."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.FileNotFound,
+                "The requested file could not be found."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var delimiterResult = _delimiterDetector.Detect(fullPath);
+            if (delimiterResult.SampleRecords.Count == 0)
+            {
+                warnings.Add(CreateWarning(
+                    ImportWarningCodes.EmptyFile,
+                    "The file is empty or contains only blank rows."));
+
+                return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+            }
+
+            if (!delimiterResult.IsTabular || delimiterResult.Delimiter is null)
+            {
+                warnings.Add(CreateWarning(
+                    ImportWarningCodes.UnsupportedFileExtension,
+                    "The file does not appear to contain supported tabular CSV-style data."));
+
+                return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+            }
+
+            var parsedRecords = ReadPreviewRecords(fullPath, delimiterResult.Delimiter.Value, rowLimit, cancellationToken);
+            if (parsedRecords.Count == 0)
+            {
+                warnings.Add(CreateWarning(
+                    ImportWarningCodes.EmptyFile,
+                    "The file is empty or contains only blank rows."));
+
+                return BuildTerminalResult(fullPath, extension, warnings, correlationId, delimiterResult.Delimiter, isTabular: true);
+            }
+
+            var headerDecision = DetectHeaderRow(parsedRecords);
+            if (!headerDecision.HasHeaderRow)
+            {
+                warnings.Add(CreateWarning(
+                    headerDecision.IsAmbiguous ? ImportWarningCodes.AmbiguousHeaderRow : ImportWarningCodes.MissingHeaderRow,
+                    headerDecision.IsAmbiguous
+                        ? "The first row appears header-like but could not be mapped confidently, so generic column names were generated."
+                        : "The file does not appear to contain a reliable header row, so generic column names were generated."));
+            }
+
+            var dataRecords = parsedRecords
+                .Skip(headerDecision.HasHeaderRow ? 1 : 0)
+                .ToList();
+            var maxDisplayedWidth = Math.Max(
+                headerDecision.HeaderValues.Count,
+                dataRecords.Count == 0 ? 0 : dataRecords.Max(static record => record.Fields.Length));
+            var columns = BuildColumns(headerDecision, maxDisplayedWidth);
+            var previewRows = BuildPreviewRows(dataRecords, columns.Count);
+
+            AddRowWidthWarnings(headerDecision, dataRecords, warnings);
+
+            if (rowLimit.HasValue && dataRecords.Count >= rowLimit.Value)
+            {
+                warnings.Add(CreateWarning(
+                    ImportWarningCodes.PreviewTruncated,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Row reading was limited to the first {0} rows.",
+                        rowLimit.Value)));
+            }
+
+            return new CsvAnalysisResult
+            {
+                CorrelationId = correlationId,
+                FilePath = fullPath,
+                FileName = Path.GetFileName(fullPath),
+                FileExtension = extension,
+                IsSupported = true,
+                IsTabular = true,
+                Delimiter = delimiterResult.Delimiter,
+                HasHeaderRow = headerDecision.HasHeaderRow,
+                Columns = columns,
+                PreviewRows = previewRows,
+                Warnings = warnings
+            };
+        }
+        catch (DecoderFallbackException)
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.UnsupportedEncoding,
+                "The file encoding could not be read as UTF-8 or UTF-8 with BOM."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+        catch (IOException)
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The file could not be read safely."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The file could not be read safely."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+        catch (FormatException)
+        {
+            warnings.Add(CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The file contains malformed quoted CSV data and could not be read safely."));
+
+            return BuildTerminalResult(fullPath, extension, warnings, correlationId);
+        }
+    }
+
     private HeaderDecision DetectHeaderRow(IReadOnlyList<CsvParsedRecord> records)
     {
         var firstRecord = records[0].Fields;
@@ -301,13 +479,13 @@ public sealed class CsvSourceImporter : ISourceImporter
     private static List<CsvParsedRecord> ReadPreviewRecords(
         string filePath,
         char delimiter,
-        int maxRecords,
+        int? maxRecords,
         CancellationToken cancellationToken)
     {
-        var records = new List<CsvParsedRecord>(maxRecords);
+        var records = new List<CsvParsedRecord>(maxRecords ?? 32);
 
         using var reader = new CsvRecordReader(filePath, delimiter);
-        while (records.Count < maxRecords)
+        while (!maxRecords.HasValue || records.Count < maxRecords.Value)
         {
             cancellationToken.ThrowIfCancellationRequested();
 

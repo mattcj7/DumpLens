@@ -13,4 +13,8 @@ public interface ISourceImporter
     Task<ImportPreviewResult> PreviewAsync(
         ImportPreviewRequest request,
         CancellationToken cancellationToken = default);
+
+    Task<ImportTabularDataResult> ReadTabularDataAsync(
+        ImportTabularDataRequest request,
+        CancellationToken cancellationToken = default);
 }

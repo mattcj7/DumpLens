@@ -97,3 +97,24 @@ The SQLite/filesystem-backed implementation in `DumpLens.Persistence.Sources` or
 
 This workflow intentionally does not parse the source file, create `source_artifacts`, or persist normalized messages/calls yet.
 Operational logs for source registration use correlation IDs, case/source import IDs, hash prefixes, extensions, counts, and stage names only.
+
+## Message Import Workflow
+
+Application-facing message import persistence is exposed through `DumpLens.Application.MessageImports.IMessageImportService`.
+The SQLite-backed implementation in `DumpLens.Persistence.MessageImports` orchestrates:
+
+1. validate the case database path, source import ID, requested source kind, field mappings, and safe correlation ID
+2. load the existing `source_imports` row created during source registration and confirm it belongs to the target case
+3. resolve the registered copied source file path, or use the caller-provided registered source file path when supplied
+4. read full tabular rows from the CSV/XLSX importer through application-facing import contracts
+5. create one `source_artifacts` row per imported source row with stable row or worksheet-row locator context and row metadata JSON
+6. normalize sender and recipient identities through `IIdentityNormalizer`, then create or reuse `identities` records deterministically
+7. normalize timestamps through `ITimestampNormalizer`, preserving the original timestamp string and the normalized UTC value separately
+8. persist `messages` and `message_recipients` rows in batches while keeping `conversation_id` null for now
+9. persist row-level and import-level `import_warnings` without logging raw evidence content
+10. update `source_imports.record_count`, `source_imports.warning_count`, `source_imports.updated_at_utc`, and the import status
+11. write a `messages_imported` audit event after persistence commits successfully
+12. return safe import counts and audit metadata to the caller
+
+This workflow intentionally does not register or copy source files again, persist call logs, build conversations, wire the WPF completion flow, create search indexes, or perform reconciliation.
+Operational logs for message import use correlation IDs, case/source import IDs, batch kinds, row counts, warning counts, and stage names only. They do not log message bodies, phone numbers, emails, handles, raw rows, or free-form evidence text.

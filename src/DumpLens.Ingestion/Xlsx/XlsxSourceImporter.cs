@@ -112,6 +112,45 @@ public sealed class XlsxSourceImporter : ISourceImporter
         });
     }
 
+    public Task<ImportTabularDataResult> ReadTabularDataAsync(
+        ImportTabularDataRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(request.FilePath);
+
+        if (!Path.IsPathRooted(request.FilePath))
+        {
+            throw new ArgumentException("The file path must be absolute.", nameof(request.FilePath));
+        }
+
+        if (request.RowLimit is <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(request.RowLimit), "The row limit must be positive when provided.");
+        }
+
+        var correlationId = TabularImportUtilities.ResolveCorrelationId(request.CorrelationId);
+        var analysis = ReadAllRows(request.FilePath, request.WorksheetName, request.RowLimit, correlationId, cancellationToken);
+
+        return Task.FromResult(new ImportTabularDataResult
+        {
+            CorrelationId = correlationId,
+            SourceKind = SourceKind,
+            FilePath = analysis.FilePath,
+            FileName = analysis.FileName,
+            FileExtension = analysis.FileExtension,
+            IsSupported = analysis.IsSupported,
+            IsTabular = analysis.IsTabular,
+            WorksheetNames = analysis.WorksheetNames,
+            SelectedWorksheetName = analysis.SelectedWorksheetName,
+            HasHeaderRow = analysis.HasHeaderRow,
+            ReturnedRowCount = analysis.PreviewRows.Count,
+            Columns = analysis.Columns,
+            Rows = analysis.PreviewRows,
+            Warnings = analysis.Warnings
+        });
+    }
+
     private WorkbookAnalysisResult AnalyzeWorkbook(
         string filePath,
         int previewRowCount,
@@ -288,6 +327,176 @@ public sealed class XlsxSourceImporter : ISourceImporter
         }
     }
 
+    private WorkbookAnalysisResult ReadAllRows(
+        string filePath,
+        string? worksheetName,
+        int? rowLimit,
+        string correlationId,
+        CancellationToken cancellationToken)
+    {
+        var fullPath = Path.GetFullPath(filePath);
+        var extension = Path.GetExtension(fullPath);
+        var warnings = new List<ImportWarning>();
+
+        if (!CanHandle(fullPath))
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.UnsupportedFileExtension,
+                "Only .xlsx workbooks are supported for XLSX message import."));
+
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+
+        if (!File.Exists(fullPath))
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.FileNotFound,
+                "The requested file could not be found."));
+
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+
+        try
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var workbookMetadata = ReadWorkbookMetadata(fullPath);
+            if (workbookMetadata.WorksheetNames.Count == 0)
+            {
+                warnings.Add(TabularImportUtilities.CreateWarning(
+                    ImportWarningCodes.NoWorksheets,
+                    "The workbook does not contain any worksheets."));
+                warnings.Add(TabularImportUtilities.CreateWarning(
+                    ImportWarningCodes.EmptyWorkbook,
+                    "The workbook does not contain any non-empty worksheets."));
+
+                return BuildTerminalResult(
+                    fullPath,
+                    extension,
+                    correlationId,
+                    warnings,
+                    isSupported: true,
+                    worksheetNames: workbookMetadata.WorksheetNames);
+            }
+
+            using var workbook = new XLWorkbook(fullPath);
+
+            var selectedWorksheet = ResolveSelectedWorksheet(workbook, workbookMetadata.WorksheetNames, worksheetName, warnings, cancellationToken);
+            if (selectedWorksheet is null)
+            {
+                return BuildTerminalResult(
+                    fullPath,
+                    extension,
+                    correlationId,
+                    warnings,
+                    isSupported: true,
+                    worksheetNames: workbookMetadata.WorksheetNames);
+            }
+
+            var previewRecords = ReadPreviewRecords(selectedWorksheet, rowLimit, cancellationToken);
+            if (previewRecords.Count == 0)
+            {
+                warnings.Add(TabularImportUtilities.CreateWarning(
+                    ImportWarningCodes.EmptyWorksheet,
+                    "The selected worksheet does not contain any non-empty rows.",
+                    selectedWorksheet.Name));
+
+                if (IsWorkbookEmpty(workbook, cancellationToken))
+                {
+                    warnings.Add(TabularImportUtilities.CreateWarning(
+                        ImportWarningCodes.EmptyWorkbook,
+                        "The workbook does not contain any non-empty worksheets."));
+                }
+
+                return BuildTerminalResult(
+                    fullPath,
+                    extension,
+                    correlationId,
+                    warnings,
+                    isSupported: true,
+                    worksheetNames: workbookMetadata.WorksheetNames,
+                    selectedWorksheetName: selectedWorksheet.Name);
+            }
+
+            var headerDecision = _headerDetector.DetectHeaderRow(previewRecords);
+            if (!headerDecision.HasHeaderRow)
+            {
+                warnings.Add(TabularImportUtilities.CreateWarning(
+                    headerDecision.IsAmbiguous ? ImportWarningCodes.AmbiguousHeaderRow : ImportWarningCodes.MissingHeaderRow,
+                    headerDecision.IsAmbiguous
+                        ? "The first row appears header-like but could not be mapped confidently, so generic column names were generated."
+                        : "The worksheet does not appear to contain a reliable header row, so generic column names were generated.",
+                    selectedWorksheet.Name));
+            }
+
+            var dataRecords = previewRecords
+                .Skip(headerDecision.HasHeaderRow ? 1 : 0)
+                .ToList();
+            var maxDisplayedWidth = Math.Max(
+                headerDecision.HeaderValues.Count,
+                dataRecords.Count == 0 ? 0 : dataRecords.Max(static record => record.Values.Count));
+            var columns = TabularImportUtilities.BuildColumns(headerDecision, maxDisplayedWidth);
+            var previewRows = TabularImportUtilities.BuildPreviewRows(dataRecords, columns.Count);
+
+            TabularImportUtilities.AddRowWidthWarnings(headerDecision, dataRecords, warnings, selectedWorksheet.Name);
+
+            if (rowLimit.HasValue && dataRecords.Count >= rowLimit.Value)
+            {
+                warnings.Add(TabularImportUtilities.CreateWarning(
+                    ImportWarningCodes.PreviewTruncated,
+                    string.Format(
+                        CultureInfo.InvariantCulture,
+                        "Row reading was limited to the first {0} rows.",
+                        rowLimit.Value),
+                    selectedWorksheet.Name));
+            }
+
+            return new WorkbookAnalysisResult
+            {
+                CorrelationId = correlationId,
+                FilePath = fullPath,
+                FileName = Path.GetFileName(fullPath),
+                FileExtension = extension,
+                IsSupported = true,
+                IsTabular = true,
+                WorksheetNames = workbookMetadata.WorksheetNames,
+                SelectedWorksheetName = selectedWorksheet.Name,
+                HasHeaderRow = headerDecision.HasHeaderRow,
+                Columns = columns,
+                PreviewRows = previewRows,
+                Warnings = warnings
+            };
+        }
+        catch (IOException)
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The workbook could not be read safely."));
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+        catch (UnauthorizedAccessException)
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The workbook could not be read safely."));
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+        catch (InvalidDataException)
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The workbook could not be read safely."));
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+        catch (OpenXmlPackageException)
+        {
+            warnings.Add(TabularImportUtilities.CreateWarning(
+                ImportWarningCodes.UnreadableFile,
+                "The workbook could not be read safely."));
+            return BuildTerminalResult(fullPath, extension, correlationId, warnings);
+        }
+    }
+
     private static WorkbookMetadata ReadWorkbookMetadata(string fullPath)
     {
         using var document = SpreadsheetDocument.Open(fullPath, false);
@@ -360,10 +569,10 @@ public sealed class XlsxSourceImporter : ISourceImporter
 
     private static List<TabularPreviewRecord> ReadPreviewRecords(
         IXLWorksheet worksheet,
-        int maxRecords,
+        int? maxRecords,
         CancellationToken cancellationToken)
     {
-        var records = new List<TabularPreviewRecord>(maxRecords);
+        var records = new List<TabularPreviewRecord>(maxRecords ?? 32);
         var usedRange = worksheet.RangeUsed(XLCellsUsedOptions.AllContents);
         if (usedRange is null)
         {
@@ -381,7 +590,7 @@ public sealed class XlsxSourceImporter : ISourceImporter
             }
 
             records.Add(new TabularPreviewRecord(row.RowNumber(), values));
-            if (records.Count >= maxRecords)
+            if (maxRecords.HasValue && records.Count >= maxRecords.Value)
             {
                 break;
             }
