@@ -1,0 +1,23 @@
+{
+  "package_version": "1",
+  "package_id": "e77956411ff44360bdfb446cd49b19b5",
+  "case_id": "2b9787f4f70c4f17ae466348a2d29e90",
+  "case_number": "asdfasdf",
+  "title": "23434",
+  "created_at_utc": "2026-04-30T01:44:18.1654316\u002B00:00",
+  "app_name": "DumpLens",
+  "database_relative_path": "case.dlensdb",
+  "preparation_mode": "copy",
+  "folders": {
+    "imports": "imports",
+    "indexes": "indexes",
+    "attachments": "attachments",
+    "attachments_thumbnails": "attachments/thumbnails",
+    "attachments_extracted_text": "attachments/extracted_text",
+    "attachments_media_cache": "attachments/media_cache",
+    "reports": "reports",
+    "exports": "exports",
+    "logs": "logs",
+    "backups": "backups"
+  }
+}

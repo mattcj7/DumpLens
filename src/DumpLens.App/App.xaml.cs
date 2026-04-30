@@ -1,8 +1,17 @@
 using DumpLens.App.ViewModels;
+using DumpLens.Application.Audit;
 using DumpLens.Application.Imports;
 using DumpLens.Ingestion.Csv;
 using DumpLens.Ingestion.Xlsx;
+using DumpLens.Normalization.Identities;
+using DumpLens.Normalization.Timestamps;
+using DumpLens.Persistence.Audit;
+using DumpLens.Persistence.CallImports;
 using DumpLens.Persistence.Cases;
+using DumpLens.Persistence.Imports;
+using DumpLens.Persistence.MessageImports;
+using DumpLens.Persistence.Sources;
+using DumpLens.Security.FileHashing;
 
 namespace DumpLens.App;
 
@@ -20,11 +29,27 @@ public partial class App : System.Windows.Application
 
         base.OnStartup(e);
 
+        var sourceImporters = CreateSourceImporters();
+        var sourceImportRepository = new SqliteSourceImportRepository();
+        var fileHashService = new Sha256FileHashService();
+        var sourceRegistrationService = new SqliteSourceRegistrationService(fileHashService, sourceImportRepository);
+        var identityNormalizer = new IdentityNormalizer();
+        var timestampNormalizer = new TimestampNormalizer();
+        var messageImportService = new SqliteMessageImportService(sourceImporters, identityNormalizer, timestampNormalizer);
+        var callImportService = new SqliteCallImportService(sourceImporters, identityNormalizer, timestampNormalizer);
+        var importWarningSummaryReader = new SqliteImportWarningSummaryReader();
+        Func<string, IAuditLogger> auditLoggerFactory = connectionString => new SqliteAuditLogger(connectionString);
+
         MainWindow = new MainWindow
         {
             DataContext = new MainShellViewModel(
                 new SqliteCaseService(),
-                CreateSourceImporters(),
+                sourceImporters,
+                sourceRegistrationService,
+                messageImportService,
+                callImportService,
+                importWarningSummaryReader,
+                auditLoggerFactory,
                 _logger.LogInformation)
         };
 

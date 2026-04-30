@@ -26,10 +26,10 @@
                         Grid.ColumnSpan="3">
                 <TextBlock FontSize="24"
                            FontWeight="SemiBold"
-                           Text="Import Preview Wizard" />
+                           Text="Import Wizard" />
                 <TextBlock Margin="0,8,0,0"
                            Foreground="#FF4A5563"
-                           Text="Guide the source through selection, preview, mapping, timezone confirmation, warnings, and a preview-only summary. No persistence is implemented in this ticket."
+                           Text="Guide the source through selection, preview, mapping, timezone confirmation, warning review, and the final import summary."
                            TextWrapping="Wrap" />
             </StackPanel>
 
@@ -42,7 +42,7 @@
                     BorderThickness="1"
                     CornerRadius="6">
                 <TextBlock Foreground="#FF6B4E16"
-                           Text="Preview only. This wizard does not register sources, copy evidence, hash files, or write messages, calls, identities, warnings, or any other records."
+                           Text="Preview and probe are safe pre-import steps. Records are written only when you confirm Import on the final step, and an active case is required first."
                            TextWrapping="Wrap" />
             </Border>
 
@@ -275,9 +275,42 @@
                                     BorderThickness="1"
                                     CornerRadius="6">
                                 <TextBlock Foreground="#FF52606D"
-                                           Text="These fields are manual placeholders only in T0019. They do not create persons, devices, or platform accounts."
+                                           Text="Choose the import kind here, add platform/carrier text if needed, and keep any source owner, device, or account notes as placeholders only. These fields do not create persons, devices, or platform accounts."
                                            TextWrapping="Wrap" />
                             </Border>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Import kind" />
+                                <ComboBox Margin="0,8,0,0"
+                                          ItemsSource="{Binding ImportDataKindOptions, Mode=OneWay}"
+                                          SelectedItem="{Binding SelectedImportDataKindOption, Mode=TwoWay}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <TextBlock FontWeight="SemiBold"
+                                                           Text="{Binding Label, Mode=OneWay}" />
+                                                <TextBlock Margin="0,4,0,0"
+                                                           Foreground="#FF52606D"
+                                                           FontSize="12"
+                                                           Text="{Binding Description, Mode=OneWay}"
+                                                           TextWrapping="Wrap" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </StackPanel>
+
+                            <StackPanel Margin="0,16,0,0">
+                                <TextBlock FontWeight="SemiBold"
+                                           Text="Platform or carrier" />
+                                <TextBox Margin="0,8,0,0"
+                                         Text="{Binding PlatformText, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="#FF52606D"
+                                           FontSize="12"
+                                           Text="Use this when the source does not already include a platform or carrier field, or when you need to confirm the default value for import." />
+                            </StackPanel>
 
                             <StackPanel Margin="0,16,0,0">
                                 <TextBlock FontWeight="SemiBold"
@@ -335,6 +368,10 @@
                         <StackPanel Visibility="{Binding IsMappingStep, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                             <TextBlock FontWeight="SemiBold"
                                        Text="Suggested field mappings" />
+                            <TextBlock Margin="0,8,0,0"
+                                       Foreground="#FF52606D"
+                                       Text="Only the fields required for the selected import kind must be mapped before import."
+                                       TextWrapping="Wrap" />
                             <ItemsControl Margin="0,12,0,0"
                                           ItemsSource="{Binding ColumnMappings, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
@@ -380,7 +417,7 @@
                                      Text="{Binding TimezoneText, UpdateSourceTrigger=PropertyChanged}" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="#FF52606D"
-                                       Text="Enter or confirm the timezone text that should guide later timestamp persistence tickets. This ticket does not write normalized timestamps."
+                                       Text="Enter or confirm the timezone text that should guide the real import. Timestamp normalization uses this assumption when the source does not already provide enough timezone context."
                                        TextWrapping="Wrap" />
                         </StackPanel>
 

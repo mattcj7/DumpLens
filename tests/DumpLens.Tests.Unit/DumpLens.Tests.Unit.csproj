@@ -27,6 +27,7 @@
     <ProjectReference Include="..\..\src\DumpLens.Analysis\DumpLens.Analysis.csproj" />
     <ProjectReference Include="..\..\src\DumpLens.Security\DumpLens.Security.csproj" />
     <ProjectReference Include="..\..\src\DumpLens.AI\DumpLens.AI.csproj" />
+    <ProjectReference Include="..\..\src\DumpLens.App.ViewModels\DumpLens.App.ViewModels.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,6 +1,10 @@
 using System.Collections.ObjectModel;
+using DumpLens.Application.Audit;
+using DumpLens.Application.CallImports;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Imports;
+using DumpLens.Application.MessageImports;
+using DumpLens.Application.Sources;
 
 namespace DumpLens.App.ViewModels;
 
@@ -9,8 +13,14 @@ public sealed class MainShellViewModel : ObservableObject
     private static readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> NoOpLogAction = static (_, _, _, _) => { };
 
     private readonly ICaseService _caseService;
+    private readonly ICallImportService _callImportService;
+    private readonly Func<string, IAuditLogger>? _auditLoggerFactory;
+    private readonly IImportWarningSummaryReader _importWarningSummaryReader;
     private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
+    private readonly IMessageImportService _messageImportService;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
+    private readonly ISourceRegistrationService _sourceRegistrationService;
+    private CreateCaseResult? _activeCase;
     private CaseCreationViewModel? _caseCreation;
     private ImportWizardViewModel? _importWizard;
     private string _globalCaseTitle;
@@ -23,24 +33,50 @@ public sealed class MainShellViewModel : ObservableObject
     private InspectorPlaceholderViewModel _inspector;
 
     public MainShellViewModel()
-        : this(new UnavailableCaseService(), Array.Empty<ISourceImporter>(), null)
+        : this(
+            new UnavailableCaseService(),
+            Array.Empty<ISourceImporter>(),
+            new UnavailableSourceRegistrationService(),
+            new UnavailableMessageImportService(),
+            new UnavailableCallImportService(),
+            new EmptyImportWarningSummaryReader(),
+            auditLoggerFactory: null,
+            logAction: null)
     {
     }
 
     public MainShellViewModel(
         ICaseService caseService,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
-        : this(caseService, Array.Empty<ISourceImporter>(), logAction)
+        : this(
+            caseService,
+            Array.Empty<ISourceImporter>(),
+            new UnavailableSourceRegistrationService(),
+            new UnavailableMessageImportService(),
+            new UnavailableCallImportService(),
+            new EmptyImportWarningSummaryReader(),
+            auditLoggerFactory: null,
+            logAction)
     {
     }
 
     public MainShellViewModel(
         ICaseService caseService,
         IEnumerable<ISourceImporter> sourceImporters,
+        ISourceRegistrationService sourceRegistrationService,
+        IMessageImportService messageImportService,
+        ICallImportService callImportService,
+        IImportWarningSummaryReader importWarningSummaryReader,
+        Func<string, IAuditLogger>? auditLoggerFactory,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
     {
         _caseService = caseService ?? throw new ArgumentNullException(nameof(caseService));
         _sourceImporters = sourceImporters?.ToArray() ?? throw new ArgumentNullException(nameof(sourceImporters));
+        _sourceRegistrationService = sourceRegistrationService ?? throw new ArgumentNullException(nameof(sourceRegistrationService));
+        _messageImportService = messageImportService ?? throw new ArgumentNullException(nameof(messageImportService));
+        _callImportService = callImportService ?? throw new ArgumentNullException(nameof(callImportService));
+        _importWarningSummaryReader = importWarningSummaryReader ?? throw new ArgumentNullException(nameof(importWarningSummaryReader));
+        _auditLoggerFactory = auditLoggerFactory;
         _logAction = logAction ?? NoOpLogAction;
         _globalCaseTitle = "No case selected";
         _globalCaseContext = "Create a case package to start working in DumpLens.";
@@ -190,6 +226,12 @@ public sealed class MainShellViewModel : ObservableObject
         CloseCaseCreation();
         ImportWizard = new ImportWizardViewModel(
             _sourceImporters,
+            _activeCase,
+            _sourceRegistrationService,
+            _messageImportService,
+            _callImportService,
+            _importWarningSummaryReader,
+            _auditLoggerFactory,
             CloseImportWizard,
             _logAction);
         IsImportWizardOpen = true;
@@ -203,6 +245,7 @@ public sealed class MainShellViewModel : ObservableObject
 
     private void OnCaseCreated(CreateCaseResult result)
     {
+        _activeCase = result;
         GlobalCaseTitle = result.Title;
         GlobalCaseContext = string.IsNullOrWhiteSpace(result.CaseNumber)
             ? "Case number not provided."
@@ -343,6 +386,47 @@ public sealed class MainShellViewModel : ObservableObject
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("No case service is configured for this shell instance.");
+        }
+    }
+
+    private sealed class EmptyImportWarningSummaryReader : IImportWarningSummaryReader
+    {
+        public Task<IReadOnlyList<ImportWarningSummary>> GetSummariesAsync(
+            string caseDatabasePath,
+            string sourceImportId,
+            CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult<IReadOnlyList<ImportWarningSummary>>(Array.Empty<ImportWarningSummary>());
+        }
+    }
+
+    private sealed class UnavailableCallImportService : ICallImportService
+    {
+        public Task<ImportCallsResult> ImportAsync(
+            ImportCallsRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No call import service is configured for this shell instance.");
+        }
+    }
+
+    private sealed class UnavailableMessageImportService : IMessageImportService
+    {
+        public Task<ImportMessagesResult> ImportAsync(
+            ImportMessagesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No message import service is configured for this shell instance.");
+        }
+    }
+
+    private sealed class UnavailableSourceRegistrationService : ISourceRegistrationService
+    {
+        public Task<RegisterSourceResult> RegisterAsync(
+            RegisterSourceRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No source registration service is configured for this shell instance.");
         }
     }
 }

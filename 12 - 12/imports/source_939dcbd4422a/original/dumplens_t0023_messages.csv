@@ -1,0 +1,3 @@
+timestamp,sender,recipient,message,platform,direction
+2026-04-28 19:30:00,Alice,Bob,"Meet at 8, bring notes",SMS,outgoing
+2026-04-28 19:31:00,Bob,Alice,Got it,SMS,incoming

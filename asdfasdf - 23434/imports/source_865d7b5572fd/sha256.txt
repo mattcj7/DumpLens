@@ -1,0 +1,4 @@
+algorithm: SHA-256
+file_name: dumplens_t0023_messages.csv
+file_size_bytes: 173
+sha256: 64d66c765a19676f7e6ca607b3167f944eaea55d0f182464f5a9cf5cf8e42ffe

@@ -64,6 +64,10 @@ The WPF desktop shell may reference `DumpLens.Persistence` only to instantiate e
 
 The WPF desktop shell may reference `DumpLens.Ingestion` only to instantiate existing `DumpLens.Application.Imports` preview/probe services at startup. This exception is limited to composition root wiring inside `DumpLens.App`; views and view models remain dependent on application-facing contracts and must not take on ingestion logic directly.
 
+## D0016 - WPF App May Wire Existing Import Normalization and Hashing Services At Composition Root
+
+The WPF desktop shell may reference `DumpLens.Normalization` and `DumpLens.Security` only to instantiate existing application-facing services needed by the approved import workflow at startup. This exception is limited to composition root wiring inside `DumpLens.App`; views and view models remain dependent on application-facing contracts and must not take on normalization, hashing, or evidence-processing logic directly.
+
 ## Decision Change Process
 
 If a ticket changes architecture, project references, schema, testing expectations, or logging requirements:

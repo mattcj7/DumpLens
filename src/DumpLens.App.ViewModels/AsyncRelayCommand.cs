@@ -4,14 +4,16 @@ namespace DumpLens.App.ViewModels;
 
 public sealed class AsyncRelayCommand : ICommand
 {
-    private readonly Func<Task> _executeAsync;
     private readonly Func<bool>? _canExecute;
+    private readonly Func<Task> _executeAsync;
+    private readonly SynchronizationContext? _synchronizationContext;
     private bool _isExecuting;
 
     public AsyncRelayCommand(Func<Task> executeAsync, Func<bool>? canExecute = null)
     {
         _executeAsync = executeAsync ?? throw new ArgumentNullException(nameof(executeAsync));
         _canExecute = canExecute;
+        _synchronizationContext = SynchronizationContext.Current;
     }
 
     public event EventHandler? CanExecuteChanged;
@@ -44,6 +46,6 @@ public sealed class AsyncRelayCommand : ICommand
 
     public void RaiseCanExecuteChanged()
     {
-        CanExecuteChanged?.Invoke(this, EventArgs.Empty);
+        CanExecuteChangedDispatcher.Raise(this, CanExecuteChanged, _synchronizationContext);
     }
 }
