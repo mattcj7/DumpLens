@@ -3,6 +3,7 @@ using System.ComponentModel;
 using DumpLens.Application.Audit;
 using DumpLens.Application.CallImports;
 using DumpLens.Application.Cases;
+using DumpLens.Application.Conversations;
 using DumpLens.Application.Imports;
 using DumpLens.Application.MessageImports;
 using DumpLens.Application.Sources;
@@ -16,6 +17,7 @@ public sealed class MainShellViewModel : ObservableObject
     private readonly ICaseService _caseService;
     private readonly ICallImportService _callImportService;
     private readonly Func<string, IAuditLogger>? _auditLoggerFactory;
+    private readonly IConversationReader _conversationReader;
     private readonly IImportWarningSummaryReader _importWarningSummaryReader;
     private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
     private readonly ISourceManagerService _sourceManagerService;
@@ -33,12 +35,14 @@ public sealed class MainShellViewModel : ObservableObject
     private NavigationItemViewModel _selectedNavigationItem;
     private WorkspaceViewModelBase _currentWorkspace;
     private InspectorViewModelBase _inspector;
+    private ConversationWorkspaceViewModel? _conversationWorkspace;
     private SourceManagerViewModel? _sourceManagerWorkspace;
 
     public MainShellViewModel()
         : this(
             new UnavailableCaseService(),
             Array.Empty<ISourceImporter>(),
+            new UnavailableConversationReader(),
             new UnavailableSourceManagerService(),
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
@@ -55,6 +59,7 @@ public sealed class MainShellViewModel : ObservableObject
         : this(
             caseService,
             Array.Empty<ISourceImporter>(),
+            new UnavailableConversationReader(),
             new UnavailableSourceManagerService(),
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
@@ -68,6 +73,7 @@ public sealed class MainShellViewModel : ObservableObject
     public MainShellViewModel(
         ICaseService caseService,
         IEnumerable<ISourceImporter> sourceImporters,
+        IConversationReader conversationReader,
         ISourceManagerService sourceManagerService,
         ISourceRegistrationService sourceRegistrationService,
         IMessageImportService messageImportService,
@@ -78,6 +84,7 @@ public sealed class MainShellViewModel : ObservableObject
     {
         _caseService = caseService ?? throw new ArgumentNullException(nameof(caseService));
         _sourceImporters = sourceImporters?.ToArray() ?? throw new ArgumentNullException(nameof(sourceImporters));
+        _conversationReader = conversationReader ?? throw new ArgumentNullException(nameof(conversationReader));
         _sourceManagerService = sourceManagerService ?? throw new ArgumentNullException(nameof(sourceManagerService));
         _sourceRegistrationService = sourceRegistrationService ?? throw new ArgumentNullException(nameof(sourceRegistrationService));
         _messageImportService = messageImportService ?? throw new ArgumentNullException(nameof(messageImportService));
@@ -276,7 +283,17 @@ public sealed class MainShellViewModel : ObservableObject
 
     private void RefreshSurfaceState()
     {
+        DetachConversationWorkspace();
         DetachSourceManagerWorkspace();
+
+        if (string.Equals(_selectedNavigationItem.Label, "Conversations", StringComparison.Ordinal))
+        {
+            _conversationWorkspace = new ConversationWorkspaceViewModel(_activeCase, _conversationReader, _logAction);
+            _conversationWorkspace.PropertyChanged += OnConversationWorkspacePropertyChanged;
+            CurrentWorkspace = _conversationWorkspace;
+            Inspector = _conversationWorkspace.CurrentInspector;
+            return;
+        }
 
         if (string.Equals(_selectedNavigationItem.Label, "Sources", StringComparison.Ordinal))
         {
@@ -291,6 +308,17 @@ public sealed class MainShellViewModel : ObservableObject
         Inspector = CreatePlaceholderInspector(_selectedNavigationItem);
     }
 
+    private void DetachConversationWorkspace()
+    {
+        if (_conversationWorkspace is null)
+        {
+            return;
+        }
+
+        _conversationWorkspace.PropertyChanged -= OnConversationWorkspacePropertyChanged;
+        _conversationWorkspace = null;
+    }
+
     private void DetachSourceManagerWorkspace()
     {
         if (_sourceManagerWorkspace is null)
@@ -300,6 +328,17 @@ public sealed class MainShellViewModel : ObservableObject
 
         _sourceManagerWorkspace.PropertyChanged -= OnSourceManagerWorkspacePropertyChanged;
         _sourceManagerWorkspace = null;
+    }
+
+    private void OnConversationWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _conversationWorkspace) ||
+            !string.Equals(e.PropertyName, nameof(ConversationWorkspaceViewModel.CurrentInspector), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Inspector = _conversationWorkspace!.CurrentInspector;
     }
 
     private void OnSourceManagerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -336,11 +375,11 @@ public sealed class MainShellViewModel : ObservableObject
             CreateItem(
                 label: "Conversations",
                 summary: "Conversation review workspace.",
-                description: "Use this workspace to review reconstructed conversations in plain language once conversation building is implemented.",
-                bodyText: "This placeholder keeps the conversation review surface in the shell without loading any message data.",
-                nextStepText: "Later tickets can add threaded review, source comparison, and review-state controls.",
-                inspectorDescription: "The right panel will show the selected item, source support, and review notes for the active conversation entry.",
-                inspectorBodyText: "Conversation detail and source references are not wired yet."),
+                description: "Review reconstructed conversations, message threads, and safe source context for the active case.",
+                bodyText: "Select a conversation to review its thread and inspect safe source context for individual messages.",
+                nextStepText: "Later tickets can add source-reference expansion, review controls, and related investigative workflows without changing this shell layout.",
+                inspectorDescription: "The right panel shows the selected conversation summary and safe source context for the active message.",
+                inspectorBodyText: "Select a conversation and message to inspect safe source context."),
             CreateItem(
                 label: "Timeline",
                 summary: "Chronological event review.",
@@ -437,6 +476,23 @@ public sealed class MainShellViewModel : ObservableObject
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<ImportWarningSummary>>(Array.Empty<ImportWarningSummary>());
+        }
+    }
+
+    private sealed class UnavailableConversationReader : IConversationReader
+    {
+        public Task<IReadOnlyList<ConversationSummary>> GetSummariesAsync(
+            LoadConversationSummariesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No conversation reader is configured for this shell instance.");
+        }
+
+        public Task<ConversationThread?> GetThreadAsync(
+            LoadConversationThreadRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No conversation reader is configured for this shell instance.");
         }
     }
 

@@ -401,7 +401,7 @@
 
                                                 <ComboBox Grid.Column="1"
                                                           VerticalAlignment="Top"
-                                                          ItemsSource="{Binding AvailableSourceColumns}"
+                                                          ItemsSource="{Binding AvailableSourceColumns, Mode=OneWay}"
                                                           SelectedItem="{Binding SelectedSourceColumnName, Mode=TwoWay}" />
                                             </Grid>
                                         </Border>

@@ -30,7 +30,7 @@
                                    Text="Current status" />
                         <TextBlock Margin="0,8,0,0"
                                    Foreground="#FF52606D"
-                                   Text="{Binding BodyText}"
+                                   Text="{Binding BodyText, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -48,7 +48,7 @@
                                    Text="What comes later" />
                         <TextBlock Margin="0,8,0,0"
                                    Foreground="#FF52606D"
-                                   Text="{Binding NextStepText}"
+                                   Text="{Binding NextStepText, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </StackPanel>
                 </Border>
@@ -92,7 +92,7 @@
                                        Text="Sources" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="#FF52606D"
-                                       Text="{Binding SourceCount}" />
+                                       Text="{Binding SourceCount, Mode=OneWay}" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="1">
@@ -100,7 +100,7 @@
                                        Text="Records" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="#FF52606D"
-                                       Text="{Binding TotalRecordCount}" />
+                                       Text="{Binding TotalRecordCount, Mode=OneWay}" />
                         </StackPanel>
 
                         <StackPanel Grid.Column="2">
@@ -108,7 +108,7 @@
                                        Text="Warnings" />
                             <TextBlock Margin="0,6,0,0"
                                        Foreground="#FF52606D"
-                                       Text="{Binding TotalWarningCount}" />
+                                       Text="{Binding TotalWarningCount, Mode=OneWay}" />
                         </StackPanel>
                     </Grid>
                 </Border>
@@ -121,7 +121,7 @@
                         BorderThickness="1"
                         CornerRadius="6">
                     <TextBlock Foreground="#FF1D4E89"
-                               Text="{Binding StatusMessage}"
+                               Text="{Binding StatusMessage, Mode=OneWay}"
                                TextWrapping="Wrap" />
                 </Border>
 
@@ -132,9 +132,9 @@
                             BorderBrush="#FFD6DCE3"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Visibility="{Binding IsEmptyStateVisible, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Foreground="#FF52606D"
-                                   Text="{Binding EmptyStateMessage}"
+                                   Text="{Binding EmptyStateMessage, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </Border>
 
@@ -143,14 +143,14 @@
                             BorderBrush="#FFF3B0B0"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Visibility="{Binding HasError, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <TextBlock Foreground="#FF8A1C1C"
-                                   Text="{Binding ErrorMessage}"
+                                   Text="{Binding ErrorMessage, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </Border>
 
-                    <Grid Visibility="{Binding HasSources, Converter={StaticResource BooleanToVisibilityConverter}}">
-                        <DataGrid ItemsSource="{Binding Sources}"
+                    <Grid Visibility="{Binding HasSources, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <DataGrid ItemsSource="{Binding Sources, Mode=OneWay}"
                                   SelectedItem="{Binding SelectedSource, Mode=TwoWay}"
                                   AutoGenerateColumns="False"
                                   IsReadOnly="True"
@@ -166,38 +166,319 @@
                                   ScrollViewer.CanContentScroll="True">
                             <DataGrid.Columns>
                                 <DataGridTextColumn Header="Source"
-                                                    Binding="{Binding SourceName}"
+                                                    Binding="{Binding SourceName, Mode=OneWay}"
                                                     Width="2*" />
                                 <DataGridTextColumn Header="Type"
-                                                    Binding="{Binding SourceType}"
+                                                    Binding="{Binding SourceType, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="Platform"
-                                                    Binding="{Binding PlatformDisplay}"
+                                                    Binding="{Binding PlatformDisplay, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="Status"
-                                                    Binding="{Binding ImportStatus}"
+                                                    Binding="{Binding ImportStatus, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="Records"
-                                                    Binding="{Binding RecordCount}"
+                                                    Binding="{Binding RecordCount, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="Warnings"
-                                                    Binding="{Binding WarningCount}"
+                                                    Binding="{Binding WarningCount, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="Imported"
-                                                    Binding="{Binding ImportedAtDisplay}"
+                                                    Binding="{Binding ImportedAtDisplay, Mode=OneWay}"
                                                     Width="1.6*" />
                                 <DataGridTextColumn Header="File"
-                                                    Binding="{Binding OriginalFilename}"
+                                                    Binding="{Binding OriginalFilename, Mode=OneWay}"
                                                     Width="1.6*" />
                                 <DataGridTextColumn Header="Bytes"
-                                                    Binding="{Binding FileSizeDisplay}"
+                                                    Binding="{Binding FileSizeDisplay, Mode=OneWay}"
                                                     Width="*" />
                                 <DataGridTextColumn Header="SHA-256"
-                                                    Binding="{Binding HashPrefix}"
+                                                    Binding="{Binding HashPrefix, Mode=OneWay}"
                                                     Width="*" />
                             </DataGrid.Columns>
                         </DataGrid>
                     </Grid>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ConversationWorkspaceViewModel}">
+            <Grid Margin="0,24,0,0">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+
+                <Border Padding="14"
+                        Background="#FFEEF6FF"
+                        BorderBrush="#FFBDD6F6"
+                        BorderThickness="1"
+                        CornerRadius="6">
+                    <TextBlock Foreground="#FF1D4E89"
+                               Text="{Binding StatusMessage, Mode=OneWay}"
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <Grid Grid.Row="1"
+                      Margin="0,16,0,0">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="360" />
+                        <ColumnDefinition Width="16" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+
+                    <Border Padding="16"
+                            Background="#FFF7F8FA"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="Conversation List" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="#FF52606D"
+                                           Text="{Binding ConversationCount, Mode=OneWay, StringFormat=Loaded conversations: {0}}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <TextBlock Grid.Row="1"
+                                       Margin="0,12,0,0"
+                                       Foreground="#FF52606D"
+                                       Text="Select a conversation to review its thread and safe metadata."
+                                       TextWrapping="Wrap" />
+
+                            <Grid Grid.Row="2"
+                                  Margin="0,16,0,0">
+                                <Border Padding="16"
+                                        Background="#FFFFF4F4"
+                                        BorderBrush="#FFF3B0B0"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Visibility="{Binding HasConversationListError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Foreground="#FF8A1C1C"
+                                               Text="{Binding ConversationListErrorMessage, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </Border>
+
+                                <Border Padding="16"
+                                        Background="White"
+                                        BorderBrush="#FFD6DCE3"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Visibility="{Binding IsConversationListEmptyStateVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Foreground="#FF52606D"
+                                               Text="{Binding ConversationListEmptyStateMessage, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </Border>
+
+                                <DataGrid ItemsSource="{Binding Conversations, Mode=OneWay}"
+                                          SelectedItem="{Binding SelectedConversation, Mode=TwoWay}"
+                                          AutoGenerateColumns="False"
+                                          IsReadOnly="True"
+                                          CanUserAddRows="False"
+                                          CanUserDeleteRows="False"
+                                          HeadersVisibility="Column"
+                                          GridLinesVisibility="Horizontal"
+                                          RowHeaderWidth="0"
+                                          SelectionMode="Single"
+                                          SelectionUnit="FullRow"
+                                          EnableRowVirtualization="True"
+                                          EnableColumnVirtualization="True"
+                                          ScrollViewer.CanContentScroll="True"
+                                          Visibility="{Binding HasConversations, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <DataGrid.Columns>
+                                        <DataGridTextColumn Header="Title"
+                                                            Binding="{Binding Title, Mode=OneWay}"
+                                                            Width="2.4*" />
+                                        <DataGridTextColumn Header="Platform"
+                                                            Binding="{Binding PlatformDisplay, Mode=OneWay}"
+                                                            Width="*" />
+                                        <DataGridTextColumn Header="End"
+                                                            Binding="{Binding EndTimeDisplay, Mode=OneWay}"
+                                                            Width="1.7*" />
+                                        <DataGridTextColumn Header="Messages"
+                                                            Binding="{Binding MessageCountDisplay, Mode=OneWay}"
+                                                            Width="*" />
+                                        <DataGridTextColumn Header="Sources"
+                                                            Binding="{Binding SourceCountDisplay, Mode=OneWay}"
+                                                            Width="*" />
+                                        <DataGridTextColumn Header="Review"
+                                                            Binding="{Binding ReviewStatus, Mode=OneWay}"
+                                                            Width="*" />
+                                    </DataGrid.Columns>
+                                </DataGrid>
+                            </Grid>
+                        </Grid>
+                    </Border>
+
+                    <Border Grid.Column="2"
+                            Padding="16"
+                            Background="#FFF8FAFC"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <Grid>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+
+                            <StackPanel>
+                                <TextBlock FontSize="16"
+                                           FontWeight="SemiBold"
+                                           Text="Thread View" />
+                                <TextBlock Margin="0,6,0,0"
+                                           Foreground="#FF52606D"
+                                           Text="{Binding ThreadStatusMessage, Mode=OneWay}"
+                                           TextWrapping="Wrap" />
+                            </StackPanel>
+
+                            <Border Grid.Row="1"
+                                    Margin="0,16,0,0"
+                                    Padding="14"
+                                    Background="White"
+                                    BorderBrush="#FFD6DCE3"
+                                    BorderThickness="1"
+                                    CornerRadius="8"
+                                    Visibility="{Binding HasSelectedConversation, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+
+                                    <TextBlock FontWeight="SemiBold" Text="Title" />
+                                    <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding SelectedConversation.Title, Mode=OneWay}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Platform" />
+                                    <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SelectedConversation.PlatformDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Time Range" />
+                                    <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SelectedConversation.StartTimeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SelectedConversation.EndTimeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                                    <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Counts" />
+                                    <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" TextWrapping="Wrap">
+                                        <Run Text="{Binding SelectedConversation.MessageCountDisplay, Mode=OneWay}" />
+                                        <Run Text=" messages, " />
+                                        <Run Text="{Binding SelectedConversation.SourceCountDisplay, Mode=OneWay}" />
+                                        <Run Text=" sources, " />
+                                        <Run Text="{Binding SelectedConversation.GapCountDisplay, Mode=OneWay}" />
+                                        <Run Text=" gaps, priority " />
+                                        <Run Text="{Binding SelectedConversation.PriorityScoreDisplay, Mode=OneWay}" />
+                                        <Run Text=", " />
+                                        <Run Text="{Binding SelectedConversation.ReconciliationStatus, Mode=OneWay}" />
+                                        <Run Text=", " />
+                                        <Run Text="{Binding SelectedConversation.ReviewStatus, Mode=OneWay}" />
+                                    </TextBlock>
+                                </Grid>
+                            </Border>
+
+                            <Grid Grid.Row="2"
+                                  Margin="0,16,0,0">
+                                <Border Padding="16"
+                                        Background="#FFFFF4F4"
+                                        BorderBrush="#FFF3B0B0"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Visibility="{Binding HasThreadError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Foreground="#FF8A1C1C"
+                                               Text="{Binding ThreadErrorMessage, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </Border>
+
+                                <Border Padding="16"
+                                        Background="White"
+                                        BorderBrush="#FFD6DCE3"
+                                        BorderThickness="1"
+                                        CornerRadius="8"
+                                        Visibility="{Binding IsThreadEmptyStateVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <TextBlock Foreground="#FF52606D"
+                                               Text="{Binding ThreadEmptyStateMessage, Mode=OneWay}"
+                                               TextWrapping="Wrap" />
+                                </Border>
+
+                                <ListBox ItemsSource="{Binding ThreadMessages, Mode=OneWay}"
+                                         SelectedItem="{Binding SelectedMessage, Mode=TwoWay}"
+                                         Background="Transparent"
+                                         BorderThickness="0"
+                                         ScrollViewer.CanContentScroll="True"
+                                         VirtualizingPanel.IsVirtualizing="True"
+                                         VirtualizingPanel.VirtualizationMode="Recycling"
+                                         Visibility="{Binding HasThreadMessages, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                                    <ListBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ListBox.ItemsPanel>
+                                    <ListBox.ItemTemplate>
+                                        <DataTemplate>
+                                            <Border Margin="0,0,0,12"
+                                                    Padding="14"
+                                                    Background="White"
+                                                    BorderBrush="#FFD6DCE3"
+                                                    BorderThickness="1"
+                                                    CornerRadius="8">
+                                                <StackPanel>
+                                                    <WrapPanel>
+                                                        <TextBlock FontWeight="SemiBold"
+                                                                   Text="{Binding TimestampDisplay, Mode=OneWay}" />
+                                                        <TextBlock Margin="12,0,0,0"
+                                                                   Foreground="#FF52606D"
+                                                                   Text="{Binding DirectionDisplay, Mode=OneWay}" />
+                                                        <TextBlock Margin="12,0,0,0"
+                                                                   Foreground="#FF52606D"
+                                                                   Text="{Binding PlatformDisplay, Mode=OneWay}" />
+                                                        <TextBlock Margin="12,0,0,0"
+                                                                   Foreground="#FF52606D"
+                                                                   Text="{Binding DeletedStatus, Mode=OneWay}" />
+                                                        <Border Margin="12,0,0,0"
+                                                                Padding="8,2"
+                                                                Background="#FFEEF6FF"
+                                                                BorderBrush="#FFBDD6F6"
+                                                                BorderThickness="1"
+                                                                CornerRadius="10">
+                                                            <TextBlock Foreground="#FF1D4E89"
+                                                                       Text="{Binding SourceReferenceIndicator, Mode=OneWay}" />
+                                                        </Border>
+                                                    </WrapPanel>
+
+                                                    <TextBlock Margin="0,10,0,0"
+                                                               FontWeight="SemiBold"
+                                                               Text="{Binding SenderDisplayLabel, Mode=OneWay}"
+                                                               TextWrapping="Wrap" />
+                                                    <TextBlock Margin="0,4,0,0"
+                                                               Foreground="#FF52606D"
+                                                               Text="{Binding RecipientsDisplay, Mode=OneWay}"
+                                                               TextWrapping="Wrap" />
+                                                    <TextBlock Margin="0,10,0,0"
+                                                               Text="{Binding MessageBody, Mode=OneWay}"
+                                                               TextWrapping="Wrap" />
+                                                </StackPanel>
+                                            </Border>
+                                        </DataTemplate>
+                                    </ListBox.ItemTemplate>
+                                </ListBox>
+                            </Grid>
+                        </Grid>
+                    </Border>
                 </Grid>
             </Grid>
         </DataTemplate>
@@ -214,7 +495,7 @@
                                Text="Reserved for" />
                     <TextBlock Margin="0,8,0,0"
                                Foreground="#FF52606D"
-                               Text="{Binding BodyText}"
+                               Text="{Binding BodyText, Mode=OneWay}"
                                TextWrapping="Wrap" />
                 </StackPanel>
             </Border>
@@ -230,7 +511,7 @@
                             BorderThickness="1"
                             CornerRadius="8">
                         <TextBlock Foreground="#FF52606D"
-                                   Text="{Binding StateMessage}"
+                                   Text="{Binding StateMessage, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </Border>
 
@@ -240,7 +521,7 @@
                             BorderBrush="#FFD6DCE3"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Visibility="{Binding HasSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasSource, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <Grid>
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
@@ -263,43 +544,43 @@
                             </Grid.ColumnDefinitions>
 
                             <TextBlock FontWeight="SemiBold" Text="Source" />
-                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceName}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceName, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="ID" />
-                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceImportId}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceImportId, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Type" />
-                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceType}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceType, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="Platform" />
-                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding PlatformDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding PlatformDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="File" />
-                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" Text="{Binding OriginalFilename}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" Text="{Binding OriginalFilename, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="5" FontWeight="SemiBold" Text="Stored Path" />
-                            <TextBlock Grid.Row="5" Grid.Column="1" Margin="12,0,0,0" Text="{Binding StoredFilePathDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Margin="12,0,0,0" Text="{Binding StoredFilePathDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Bytes" />
-                            <TextBlock Grid.Row="6" Grid.Column="1" Margin="12,0,0,0" Text="{Binding FileSizeDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Margin="12,0,0,0" Text="{Binding FileSizeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="7" FontWeight="SemiBold" Text="SHA-256" />
-                            <TextBlock Grid.Row="7" Grid.Column="1" Margin="12,0,0,0" Text="{Binding FileSha256}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="7" Grid.Column="1" Margin="12,0,0,0" Text="{Binding FileSha256, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Imported" />
-                            <TextBlock Grid.Row="8" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportedAtDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="8" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportedAtDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="9" FontWeight="SemiBold" Text="Imported By" />
-                            <TextBlock Grid.Row="9" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportedByUserIdDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="9" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportedByUserIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="10" FontWeight="SemiBold" Text="Status" />
-                            <TextBlock Grid.Row="10" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportStatus}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="10" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ImportStatus, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="11" FontWeight="SemiBold" Text="Records" />
-                            <TextBlock Grid.Row="11" Grid.Column="1" Margin="12,0,0,0" Text="{Binding RecordCountDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="11" Grid.Column="1" Margin="12,0,0,0" Text="{Binding RecordCountDisplay, Mode=OneWay}" TextWrapping="Wrap" />
 
                             <TextBlock Grid.Row="12" FontWeight="SemiBold" Text="Warnings" />
-                            <TextBlock Grid.Row="12" Grid.Column="1" Margin="12,0,0,0" Text="{Binding WarningCountDisplay}" TextWrapping="Wrap" />
+                            <TextBlock Grid.Row="12" Grid.Column="1" Margin="12,0,0,0" Text="{Binding WarningCountDisplay, Mode=OneWay}" TextWrapping="Wrap" />
                         </Grid>
                     </Border>
 
@@ -309,7 +590,7 @@
                             BorderBrush="#FFD6DCE3"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Visibility="{Binding HasSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasSource, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
                                        Text="Safe metadata" />
@@ -324,10 +605,10 @@
                                 </Grid.RowDefinitions>
 
                                 <TextBlock FontWeight="SemiBold" Text="Notes" />
-                                <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding NotesIndicator}" />
+                                <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding NotesIndicator, Mode=OneWay}" />
 
                                 <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Source Metadata" />
-                                <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceMetadataIndicator}" />
+                                <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceMetadataIndicator, Mode=OneWay}" />
                             </Grid>
                         </StackPanel>
                     </Border>
@@ -338,16 +619,16 @@
                             BorderBrush="#FFD6DCE3"
                             BorderThickness="1"
                             CornerRadius="8"
-                            Visibility="{Binding HasSource, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            Visibility="{Binding HasSource, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
                         <StackPanel>
                             <TextBlock FontWeight="SemiBold"
                                        Text="Warning Summary" />
                             <TextBlock Margin="0,8,0,0"
                                        Foreground="#FF52606D"
-                                       Text="{Binding WarningSummary.TotalWarnings, StringFormat=Total warnings: {0}}"
+                                       Text="{Binding WarningSummary.TotalWarnings, Mode=OneWay, StringFormat=Total warnings: {0}}"
                                        TextWrapping="Wrap" />
                             <ItemsControl Margin="0,12,0,0"
-                                          ItemsSource="{Binding WarningSummary.WarningCodeCounts}">
+                                          ItemsSource="{Binding WarningSummary.WarningCodeCounts, Mode=OneWay}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
                                         <Grid Margin="0,0,0,6">
@@ -355,13 +636,173 @@
                                                 <ColumnDefinition Width="*" />
                                                 <ColumnDefinition Width="Auto" />
                                             </Grid.ColumnDefinitions>
-                                            <TextBlock Text="{Binding WarningCode}" TextWrapping="Wrap" />
-                                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Count}" />
+                                                <TextBlock Text="{Binding WarningCode, Mode=OneWay}" TextWrapping="Wrap" />
+                                                <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding Count, Mode=OneWay}" />
                                         </Grid>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>
                         </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:ConversationInspectorViewModel}">
+            <ScrollViewer Margin="0,20,0,0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <TextBlock Foreground="#FF52606D"
+                                   Text="{Binding StateMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border Margin="0,16,0,0"
+                            Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding HasConversationSummary, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock FontWeight="SemiBold" Text="Conversation" />
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding ConversationTitle, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Platform" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ConversationPlatformDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Start" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ConversationStartTimeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="End" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ConversationEndTimeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Summary" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" TextWrapping="Wrap">
+                                <Run Text="{Binding ConversationMessageCountDisplay, Mode=OneWay}" />
+                                <Run Text=" messages, " />
+                                <Run Text="{Binding ConversationSourceCountDisplay, Mode=OneWay}" />
+                                <Run Text=" sources, " />
+                                <Run Text="{Binding ConversationGapCountDisplay, Mode=OneWay}" />
+                                <Run Text=" gaps, priority " />
+                                <Run Text="{Binding ConversationPriorityScoreDisplay, Mode=OneWay}" />
+                                <Run Text=", " />
+                                <Run Text="{Binding ConversationReconciliationStatus, Mode=OneWay}" />
+                                <Run Text=", " />
+                                <Run Text="{Binding ConversationReviewStatus, Mode=OneWay}" />
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
+                    <Border Margin="0,16,0,0"
+                            Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding HasMessageContext, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock FontWeight="SemiBold" Text="Message ID" />
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding MessageIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Timestamp" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SelectedMessageTimestampDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Direction" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding DirectionDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="Participants" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" TextWrapping="Wrap">
+                                <Run Text="{Binding SelectedMessageSenderDisplay, Mode=OneWay}" />
+                                <Run Text=" -> " />
+                                <Run Text="{Binding RecipientDisplay, Mode=OneWay}" />
+                            </TextBlock>
+                        </Grid>
+                    </Border>
+
+                    <Border Margin="0,16,0,0"
+                            Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding HasSourceContext, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock FontWeight="SemiBold" Text="Source Import" />
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceImportIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Source Name" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceNameDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Source Type" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceTypeDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="Platform" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding PlatformDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Original File" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" Text="{Binding OriginalFilenameDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="5" FontWeight="SemiBold" Text="Source Artifact" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceArtifactIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Artifact Locator" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ArtifactLocatorDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="7" FontWeight="SemiBold" Text="Provider Message" />
+                            <TextBlock Grid.Row="7" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ProviderMessageIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Source Thread" />
+                            <TextBlock Grid.Row="8" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceThreadIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="9" FontWeight="SemiBold" Text="Message Hash" />
+                            <TextBlock Grid.Row="9" Grid.Column="1" Margin="12,0,0,0" Text="{Binding MessageHashPrefixDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+                        </Grid>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
@@ -389,10 +830,10 @@
                     <TextBlock Foreground="White"
                                FontSize="18"
                                FontWeight="SemiBold"
-                               Text="{Binding GlobalCaseTitle}" />
+                               Text="{Binding GlobalCaseTitle, Mode=OneWay}" />
                     <TextBlock Margin="0,4,0,0"
                                Foreground="#FFD7DEE7"
-                               Text="{Binding GlobalCaseContext}" />
+                               Text="{Binding GlobalCaseContext, Mode=OneWay}" />
                 </StackPanel>
 
                 <StackPanel Grid.Column="1"
@@ -452,7 +893,7 @@
 
                     <ListBox Grid.Row="1"
                              Margin="0,16,0,16"
-                             ItemsSource="{Binding NavigationItems}"
+                             ItemsSource="{Binding NavigationItems, Mode=OneWay}"
                              SelectedItem="{Binding SelectedNavigationItem, Mode=TwoWay}"
                              Background="Transparent"
                              BorderThickness="0"
@@ -467,11 +908,11 @@
                                         CornerRadius="6">
                                     <StackPanel>
                                         <TextBlock FontWeight="SemiBold"
-                                                   Text="{Binding Label}" />
+                                                   Text="{Binding Label, Mode=OneWay}" />
                                         <TextBlock Margin="0,4,0,0"
                                                    Foreground="#FF52606D"
                                                    FontSize="12"
-                                                   Text="{Binding Summary}"
+                                                   Text="{Binding Summary, Mode=OneWay}"
                                                    TextWrapping="Wrap" />
                                     </StackPanel>
                                 </Border>
@@ -507,7 +948,7 @@
 
                     <TextBlock FontSize="24"
                                FontWeight="SemiBold"
-                               Text="{Binding CurrentWorkspace.Title}" />
+                               Text="{Binding CurrentWorkspace.Title, Mode=OneWay}" />
 
                     <Border Grid.Row="1"
                             Margin="0,16,0,0"
@@ -517,7 +958,7 @@
                             BorderThickness="1"
                             CornerRadius="6">
                         <TextBlock Foreground="#FF1D4E89"
-                                   Text="{Binding ShellStatusMessage}"
+                                   Text="{Binding ShellStatusMessage, Mode=OneWay}"
                                    TextWrapping="Wrap" />
                     </Border>
 
@@ -525,11 +966,11 @@
                                Margin="0,10,0,0"
                                Foreground="#FF4A5563"
                                FontSize="14"
-                               Text="{Binding CurrentWorkspace.Description}"
+                               Text="{Binding CurrentWorkspace.Description, Mode=OneWay}"
                                TextWrapping="Wrap" />
 
                     <ContentControl Grid.Row="3"
-                                    Content="{Binding CurrentWorkspace}" />
+                                    Content="{Binding CurrentWorkspace, Mode=OneWay}" />
                 </Grid>
             </Border>
 
@@ -539,32 +980,32 @@
                 <StackPanel>
                     <TextBlock FontSize="18"
                                FontWeight="SemiBold"
-                               Text="{Binding Inspector.Title}" />
+                               Text="{Binding Inspector.Title, Mode=OneWay}" />
                     <TextBlock Margin="0,10,0,0"
                                Foreground="#FF4A5563"
-                               Text="{Binding Inspector.Description}"
+                               Text="{Binding Inspector.Description, Mode=OneWay}"
                                TextWrapping="Wrap" />
 
-                    <ContentControl Content="{Binding Inspector}" />
+                    <ContentControl Content="{Binding Inspector, Mode=OneWay}" />
                 </StackPanel>
             </Border>
         </Grid>
 
         <Grid Grid.RowSpan="2"
               Background="#800F1720"
-              Visibility="{Binding IsImportWizardOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+              Visibility="{Binding IsImportWizardOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid HorizontalAlignment="Center"
                   VerticalAlignment="Center"
                   Width="1220"
                   MaxHeight="820"
                   Margin="24">
-                <local:ImportWizardView DataContext="{Binding ImportWizard}" />
+                <local:ImportWizardView DataContext="{Binding ImportWizard, Mode=OneWay}" />
             </Grid>
         </Grid>
 
         <Grid Grid.RowSpan="2"
               Background="#800F1720"
-              Visibility="{Binding IsCaseCreationOpen, Converter={StaticResource BooleanToVisibilityConverter}}">
+              Visibility="{Binding IsCaseCreationOpen, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
             <Grid HorizontalAlignment="Center"
                   VerticalAlignment="Center"
                   Width="860"
@@ -576,7 +1017,7 @@
                         CornerRadius="8">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <Grid Margin="24"
-                              DataContext="{Binding CaseCreation}">
+                              DataContext="{Binding CaseCreation, Mode=OneWay}">
                             <Grid.RowDefinitions>
                                 <RowDefinition Height="Auto" />
                                 <RowDefinition Height="Auto" />
@@ -812,11 +1253,11 @@
                                             Margin="0,20,0,0">
                                     <TextBlock Foreground="#FFB42318"
                                                FontWeight="SemiBold"
-                                               Text="{Binding GeneralErrorMessage}"
+                                               Text="{Binding GeneralErrorMessage, Mode=OneWay}"
                                                TextWrapping="Wrap" />
                                     <TextBlock Margin="0,8,0,0"
                                                Foreground="#FF1D4E89"
-                                               Text="{Binding StatusMessage}"
+                                               Text="{Binding StatusMessage, Mode=OneWay}"
                                                TextWrapping="Wrap" />
                                     <StackPanel Margin="0,20,0,0"
                                                 HorizontalAlignment="Right"

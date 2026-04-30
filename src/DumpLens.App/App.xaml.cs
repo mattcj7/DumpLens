@@ -1,5 +1,6 @@
 using DumpLens.App.ViewModels;
 using DumpLens.Application.Audit;
+using DumpLens.Application.Conversations;
 using DumpLens.Application.Imports;
 using DumpLens.Ingestion.Csv;
 using DumpLens.Ingestion.Xlsx;
@@ -8,6 +9,7 @@ using DumpLens.Normalization.Timestamps;
 using DumpLens.Persistence.Audit;
 using DumpLens.Persistence.CallImports;
 using DumpLens.Persistence.Cases;
+using DumpLens.Persistence.Conversations;
 using DumpLens.Persistence.Imports;
 using DumpLens.Persistence.MessageImports;
 using DumpLens.Persistence.Sources;
@@ -31,6 +33,7 @@ public partial class App : System.Windows.Application
 
         var sourceImporters = CreateSourceImporters();
         var sourceImportRepository = new SqliteSourceImportRepository();
+        IConversationReader conversationReader = new SqliteConversationReader();
         var sourceManagerService = new SqliteSourceManagerService();
         var fileHashService = new Sha256FileHashService();
         var sourceRegistrationService = new SqliteSourceRegistrationService(fileHashService, sourceImportRepository);
@@ -46,6 +49,7 @@ public partial class App : System.Windows.Application
             DataContext = new MainShellViewModel(
                 new SqliteCaseService(),
                 sourceImporters,
+                conversationReader,
                 sourceManagerService,
                 sourceRegistrationService,
                 messageImportService,

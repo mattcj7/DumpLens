@@ -59,6 +59,23 @@ public class MainShellViewModelTests
     }
 
     [Fact]
+    public void MainShellViewModel_Selecting_Conversations_Updates_Current_Workspace()
+    {
+        var shellViewModel = CreateShellViewModel();
+        var conversationsItem = GetNavigationItems(shellViewModel)
+            .Single(item => GetStringProperty(item, "Label") == "Conversations");
+
+        SetPropertyValue(shellViewModel, "SelectedNavigationItem", conversationsItem);
+
+        var workspace = GetPropertyValue(shellViewModel, "CurrentWorkspace");
+        var title = GetStringProperty(workspace, "Title");
+        var description = GetStringProperty(workspace, "Description");
+
+        Assert.Equal("Conversations", title);
+        Assert.Contains("message threads", description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void MainShellViewModel_Contains_All_Required_Labels_Exactly_Once()
     {
         var shellViewModel = CreateShellViewModel();

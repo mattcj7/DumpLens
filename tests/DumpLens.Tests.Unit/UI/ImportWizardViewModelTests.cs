@@ -25,6 +25,9 @@ public sealed class ImportWizardViewModelTests
         Assert.Contains("Text=\"{Binding DetectedSourceKindText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding FileSupportStatusText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding ProbeDetailsText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Visibility=\"{Binding HasGeneralErrorMessage, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("Text=\"{Binding PreviewGrid.SummaryText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
+        Assert.Contains("ItemsSource=\"{Binding AvailableSourceColumns, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding WarningSummaryText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Text=\"{Binding SummaryText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
         Assert.Contains("Content=\"{Binding NextButtonText, Mode=OneWay}\"", xaml, StringComparison.Ordinal);
