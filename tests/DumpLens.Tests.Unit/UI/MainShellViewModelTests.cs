@@ -55,7 +55,7 @@ public class MainShellViewModelTests
         var description = GetStringProperty(workspace, "Description");
 
         Assert.Equal("Sources", title);
-        Assert.Contains("imported evidence sources", description, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains("registered sources", description, StringComparison.OrdinalIgnoreCase);
     }
 
     [Fact]

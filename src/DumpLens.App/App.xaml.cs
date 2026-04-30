@@ -31,6 +31,7 @@ public partial class App : System.Windows.Application
 
         var sourceImporters = CreateSourceImporters();
         var sourceImportRepository = new SqliteSourceImportRepository();
+        var sourceManagerService = new SqliteSourceManagerService();
         var fileHashService = new Sha256FileHashService();
         var sourceRegistrationService = new SqliteSourceRegistrationService(fileHashService, sourceImportRepository);
         var identityNormalizer = new IdentityNormalizer();
@@ -45,6 +46,7 @@ public partial class App : System.Windows.Application
             DataContext = new MainShellViewModel(
                 new SqliteCaseService(),
                 sourceImporters,
+                sourceManagerService,
                 sourceRegistrationService,
                 messageImportService,
                 callImportService,

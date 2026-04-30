@@ -1,22 +1,17 @@
 namespace DumpLens.App.ViewModels;
 
-public sealed class PlaceholderWorkspaceViewModel
+public sealed class PlaceholderWorkspaceViewModel : WorkspaceViewModelBase
 {
     public PlaceholderWorkspaceViewModel(
         string title,
         string description,
         string bodyText,
         string nextStepText)
+        : base(title, description)
     {
-        Title = title;
-        Description = description;
         BodyText = bodyText;
         NextStepText = nextStepText;
     }
-
-    public string Title { get; }
-
-    public string Description { get; }
 
     public string BodyText { get; }
 

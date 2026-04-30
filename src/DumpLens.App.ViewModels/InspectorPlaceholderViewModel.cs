@@ -1,20 +1,15 @@
 namespace DumpLens.App.ViewModels;
 
-public sealed class InspectorPlaceholderViewModel
+public sealed class InspectorPlaceholderViewModel : InspectorViewModelBase
 {
     public InspectorPlaceholderViewModel(
         string title,
         string description,
         string bodyText)
+        : base(title, description)
     {
-        Title = title;
-        Description = description;
         BodyText = bodyText;
     }
-
-    public string Title { get; }
-
-    public string Description { get; }
 
     public string BodyText { get; }
 }

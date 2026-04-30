@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using DumpLens.Application.Audit;
 using DumpLens.Application.CallImports;
 using DumpLens.Application.Cases;
@@ -17,6 +18,7 @@ public sealed class MainShellViewModel : ObservableObject
     private readonly Func<string, IAuditLogger>? _auditLoggerFactory;
     private readonly IImportWarningSummaryReader _importWarningSummaryReader;
     private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
+    private readonly ISourceManagerService _sourceManagerService;
     private readonly IMessageImportService _messageImportService;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
     private readonly ISourceRegistrationService _sourceRegistrationService;
@@ -29,13 +31,15 @@ public sealed class MainShellViewModel : ObservableObject
     private bool _isImportWizardOpen;
     private string _shellStatusMessage;
     private NavigationItemViewModel _selectedNavigationItem;
-    private PlaceholderWorkspaceViewModel _currentWorkspace;
-    private InspectorPlaceholderViewModel _inspector;
+    private WorkspaceViewModelBase _currentWorkspace;
+    private InspectorViewModelBase _inspector;
+    private SourceManagerViewModel? _sourceManagerWorkspace;
 
     public MainShellViewModel()
         : this(
             new UnavailableCaseService(),
             Array.Empty<ISourceImporter>(),
+            new UnavailableSourceManagerService(),
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
@@ -51,6 +55,7 @@ public sealed class MainShellViewModel : ObservableObject
         : this(
             caseService,
             Array.Empty<ISourceImporter>(),
+            new UnavailableSourceManagerService(),
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
@@ -63,6 +68,7 @@ public sealed class MainShellViewModel : ObservableObject
     public MainShellViewModel(
         ICaseService caseService,
         IEnumerable<ISourceImporter> sourceImporters,
+        ISourceManagerService sourceManagerService,
         ISourceRegistrationService sourceRegistrationService,
         IMessageImportService messageImportService,
         ICallImportService callImportService,
@@ -72,6 +78,7 @@ public sealed class MainShellViewModel : ObservableObject
     {
         _caseService = caseService ?? throw new ArgumentNullException(nameof(caseService));
         _sourceImporters = sourceImporters?.ToArray() ?? throw new ArgumentNullException(nameof(sourceImporters));
+        _sourceManagerService = sourceManagerService ?? throw new ArgumentNullException(nameof(sourceManagerService));
         _sourceRegistrationService = sourceRegistrationService ?? throw new ArgumentNullException(nameof(sourceRegistrationService));
         _messageImportService = messageImportService ?? throw new ArgumentNullException(nameof(messageImportService));
         _callImportService = callImportService ?? throw new ArgumentNullException(nameof(callImportService));
@@ -83,8 +90,8 @@ public sealed class MainShellViewModel : ObservableObject
         _shellStatusMessage = "No case package has been created in this shell yet.";
         NavigationItems = new ObservableCollection<NavigationItemViewModel>(CreateNavigationItems());
         _selectedNavigationItem = NavigationItems[0];
-        _currentWorkspace = CreateWorkspace(_selectedNavigationItem);
-        _inspector = CreateInspector(_selectedNavigationItem);
+        _currentWorkspace = CreatePlaceholderWorkspace(_selectedNavigationItem);
+        _inspector = CreatePlaceholderInspector(_selectedNavigationItem);
         OpenCaseCreationCommand = new RelayCommand(OpenCaseCreation);
         OpenImportWizardCommand = new RelayCommand(OpenImportWizard);
     }
@@ -95,7 +102,7 @@ public sealed class MainShellViewModel : ObservableObject
         private set => SetProperty(ref _caseCreation, value);
     }
 
-    public PlaceholderWorkspaceViewModel CurrentWorkspace
+    public WorkspaceViewModelBase CurrentWorkspace
     {
         get => _currentWorkspace;
         private set => SetProperty(ref _currentWorkspace, value);
@@ -119,7 +126,7 @@ public sealed class MainShellViewModel : ObservableObject
         private set => SetProperty(ref _importWizard, value);
     }
 
-    public InspectorPlaceholderViewModel Inspector
+    public InspectorViewModelBase Inspector
     {
         get => _inspector;
         private set => SetProperty(ref _inspector, value);
@@ -168,7 +175,7 @@ public sealed class MainShellViewModel : ObservableObject
         private set => SetProperty(ref _shellStatusMessage, value);
     }
 
-    private PlaceholderWorkspaceViewModel CreateWorkspace(NavigationItemViewModel navigationItem)
+    private PlaceholderWorkspaceViewModel CreatePlaceholderWorkspace(NavigationItemViewModel navigationItem)
     {
         if (string.Equals(navigationItem.Label, "Dashboard", StringComparison.Ordinal) &&
             !string.Equals(GlobalCaseTitle, "No case selected", StringComparison.Ordinal))
@@ -187,7 +194,7 @@ public sealed class MainShellViewModel : ObservableObject
             nextStepText: navigationItem.WorkspaceNextStepText);
     }
 
-    private InspectorPlaceholderViewModel CreateInspector(NavigationItemViewModel navigationItem)
+    private InspectorPlaceholderViewModel CreatePlaceholderInspector(NavigationItemViewModel navigationItem)
     {
         if (string.Equals(navigationItem.Label, "Dashboard", StringComparison.Ordinal) &&
             !string.Equals(GlobalCaseTitle, "No case selected", StringComparison.Ordinal))
@@ -269,8 +276,41 @@ public sealed class MainShellViewModel : ObservableObject
 
     private void RefreshSurfaceState()
     {
-        CurrentWorkspace = CreateWorkspace(_selectedNavigationItem);
-        Inspector = CreateInspector(_selectedNavigationItem);
+        DetachSourceManagerWorkspace();
+
+        if (string.Equals(_selectedNavigationItem.Label, "Sources", StringComparison.Ordinal))
+        {
+            _sourceManagerWorkspace = new SourceManagerViewModel(_activeCase, _sourceManagerService, _logAction);
+            _sourceManagerWorkspace.PropertyChanged += OnSourceManagerWorkspacePropertyChanged;
+            CurrentWorkspace = _sourceManagerWorkspace;
+            Inspector = _sourceManagerWorkspace.CurrentDetail;
+            return;
+        }
+
+        CurrentWorkspace = CreatePlaceholderWorkspace(_selectedNavigationItem);
+        Inspector = CreatePlaceholderInspector(_selectedNavigationItem);
+    }
+
+    private void DetachSourceManagerWorkspace()
+    {
+        if (_sourceManagerWorkspace is null)
+        {
+            return;
+        }
+
+        _sourceManagerWorkspace.PropertyChanged -= OnSourceManagerWorkspacePropertyChanged;
+        _sourceManagerWorkspace = null;
+    }
+
+    private void OnSourceManagerWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _sourceManagerWorkspace) ||
+            !string.Equals(e.PropertyName, nameof(SourceManagerViewModel.CurrentDetail), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Inspector = _sourceManagerWorkspace!.CurrentDetail;
     }
 
     private static IReadOnlyList<NavigationItemViewModel> CreateNavigationItems()
@@ -288,11 +328,11 @@ public sealed class MainShellViewModel : ObservableObject
             CreateItem(
                 label: "Sources",
                 summary: "Imported evidence sources and status.",
-                description: "Review imported evidence sources, source types, and intake status here once the source manager is implemented.",
-                bodyText: "This placeholder reserves the workspace for source intake, source registration, and evidence status.",
-                nextStepText: "A later ticket can add source cards, import progress, and one-click traceability back to the original artifact.",
+                description: "Review registered sources, safe file metadata, import status, counts, and warning summaries for the active case.",
+                bodyText: "Select Sources to review imported evidence sources, safe hashes, counts, and warning summaries.",
+                nextStepText: "Later tickets can add richer source-reference inspection, conversation links, and review controls without changing this shell layout.",
                 inspectorDescription: "The right panel will show source details, safe identifiers, and locator information for the selected source.",
-                inspectorBodyText: "Source reference details will appear here after the source manager exists."),
+                inspectorBodyText: "Select a source to inspect safe source metadata, hash details, and warning summaries."),
             CreateItem(
                 label: "Conversations",
                 summary: "Conversation review workspace.",
@@ -397,6 +437,23 @@ public sealed class MainShellViewModel : ObservableObject
             CancellationToken cancellationToken = default)
         {
             return Task.FromResult<IReadOnlyList<ImportWarningSummary>>(Array.Empty<ImportWarningSummary>());
+        }
+    }
+
+    private sealed class UnavailableSourceManagerService : ISourceManagerService
+    {
+        public Task<SourceImportDetail?> GetDetailAsync(
+            LoadSourceImportDetailRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No source manager service is configured for this shell instance.");
+        }
+
+        public Task<IReadOnlyList<SourceImportSummary>> GetSummariesAsync(
+            LoadSourceImportSummariesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No source manager service is configured for this shell instance.");
         }
     }
 
