@@ -140,3 +140,22 @@ The SQLite-backed implementation in `DumpLens.Persistence.CallImports` orchestra
 
 This workflow intentionally does not register or copy source files again, persist messages, wire the WPF completion flow, build conversations, create search indexes, or perform reconciliation.
 Operational logs for call import use correlation IDs, case/source import IDs, batch kinds, row counts, warning counts, and stage names only. They do not log phone numbers, names, raw rows, call notes, or source file contents.
+
+## Conversation Build Workflow
+
+Application-facing conversation building is exposed through `DumpLens.Application.Conversations.IConversationBuilderService`.
+The SQLite-backed implementation in `DumpLens.Persistence.Conversations` orchestrates:
+
+1. validate the case database path, target case ID, optional source import scope, rebuild flag, and safe correlation ID
+2. confirm the target case exists and validate the optional `source_import_id` scope against that case
+3. load existing conversation rows so stable thread-key and participant-key matches can be reused instead of duplicated
+4. load candidate messages for the case or scoped source import, using only unassigned messages for refresh runs unless `rebuild_existing=true`
+5. group messages deterministically by `platform + source_thread_id` when a thread ID exists, otherwise by `platform + normalized participant identity set`
+6. create new conversation rows only when no stable existing match is available
+7. update `messages.conversation_id` for changed assignments only
+8. recompute conversation metadata including safe generic title, platform, normalized participant key, thread-key JSON, start/end timestamps, message count, and source count
+9. sync `conversation_participants` from assigned sender/recipient identities without creating persons or merging identities
+10. return safe build counts and conversation summaries for the caller
+
+This workflow intentionally does not add conversation UI, search indexing, reconciliation, deletion-gap analysis, review controls, person creation, or identity merging.
+Operational logs for conversation building use correlation IDs, case/source import IDs, counts, rebuild scope, and stage names only. They do not log message bodies, names, phone numbers, emails, handles, raw rows, or source file contents.
