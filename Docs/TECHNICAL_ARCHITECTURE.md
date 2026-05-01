@@ -159,3 +159,20 @@ The SQLite-backed implementation in `DumpLens.Persistence.Conversations` orchest
 
 This workflow intentionally does not add conversation UI, search indexing, reconciliation, deletion-gap analysis, review controls, person creation, or identity merging.
 Operational logs for conversation building use correlation IDs, case/source import IDs, counts, rebuild scope, and stage names only. They do not log message bodies, names, phone numbers, emails, handles, raw rows, or source file contents.
+
+## Message Search Workflow
+
+Application-facing message search indexing is exposed through `DumpLens.Application.Search.IMessageSearchIndexService`.
+The SQLite-backed implementation in `DumpLens.Persistence.Search` orchestrates:
+
+1. validate the case database path, target case ID, optional result limit, and safe correlation ID
+2. rebuild the case-scoped FTS index from canonical `messages` rows when requested
+3. clear prior search rows for the target case before re-inserting them so rebuild stays deterministic and idempotent
+4. store searchable text from `message_body`, `platform`, `direction`, and `deleted_status`
+5. preserve unindexed traceability fields including `message_id`, `conversation_id`, `source_import_id`, `source_artifact_id`, `provider_message_id`, `source_thread_id`, and `event_time_utc`
+6. sanitize user query text into safe FTS phrase terms before execution
+7. return case-scoped result rows with source-linked references, safe snippets, and rank metadata when available
+8. return safe validation responses for empty or unsupported query shapes instead of raw SQLite syntax errors
+
+This workflow intentionally does not add search UI, source-reference inspector UI, call search expansion, reconciliation analysis, AI summaries, or report/export behavior.
+Operational logs for message search use correlation IDs, case IDs, counts, duration, and failure types only. They do not log search terms, message bodies, snippets, names, phone numbers, emails, handles, raw row contents, raw metadata JSON, or source file contents.

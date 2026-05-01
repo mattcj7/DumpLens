@@ -87,7 +87,8 @@ public sealed class CommunicationSchemaMigrationTests
             {
                 ("0001", "bootstrap_schema_migrations_support"),
                 ("0002", "initial_core_schema"),
-                ("0003", "communication_schema")
+                ("0003", "communication_schema"),
+                ("0004", "message_search_index")
             },
             migrations);
     }

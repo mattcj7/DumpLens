@@ -18,3 +18,4 @@
 - Import preview wizard shell flow for CSV/XLSX inspection, worksheet selection, mapping review, timezone confirmation, warning review, and preview-only summary.
 - Real import wizard persistence flow for source registration, evidence copy and hashing, mapped message/call persistence, audit verification, and safe completion summaries.
 - Deterministic conversation builder contracts, SQLite-backed conversation assignment service, and evidence-safe unit/integration coverage for thread-based and participant-set grouping.
+- Message search indexing contracts, SQLite FTS5-backed case rebuild/search service, schema migration, and integration coverage for case-scoped traceable message search.

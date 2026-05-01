@@ -49,7 +49,7 @@ ai_runs
 ai_outputs
 ai_output_support
 prompt_templates
-message_fts
+message_search_index
 search_index_jobs
 embeddings
 reports
@@ -84,12 +84,19 @@ The migration runner enables SQLite foreign-key enforcement on its migration con
 src/DumpLens.Persistence/Migrations/0003_communication_schema.sql
 ```
 
+`T0027` adds the message full-text search migration:
+
+```text
+src/DumpLens.Persistence/Migrations/0004_message_search_index.sql
+```
+
 Initial planned tickets:
 
 ```text
 T0006 - Implement Case Database Migration System
 T0007 - Implement Initial Core Schema Migration
 T0014 - Implement Communication Schema Migration
+T0027 - Implement Message Full-Text Search Indexing
 T0031 - Implement Reconciliation Schema Migration
 T0040 - Implement Timeline Schema Migration
 T0046 - Implement Leads Schema Migration
@@ -285,6 +292,53 @@ These three `source_imports` columns remain plain `TEXT` in `T0014`. SQLite cann
 Tests added:
 
 - `tests/DumpLens.Tests.Integration/Persistence/CommunicationSchemaMigrationTests.cs`
+
+## T0027 Message Search Index
+
+Migration file:
+
+```text
+src/DumpLens.Persistence/Migrations/0004_message_search_index.sql
+```
+
+Virtual table added:
+
+- `message_search_index`
+
+Implementation notes:
+
+- SQLite FTS5 virtual table used for local full-text search.
+- Indexed text columns:
+  - `message_body`
+  - `platform`
+  - `direction`
+  - `deleted_status`
+- Stored unindexed traceability columns:
+  - `case_id`
+  - `message_id`
+  - `conversation_id`
+  - `source_import_id`
+  - `source_artifact_id`
+  - `provider_message_id`
+  - `source_thread_id`
+  - `event_time_utc`
+
+Important relationships:
+
+- Each search row is rebuildable from `messages`.
+- `message_search_index.message_id` links back to `messages.id`.
+- `message_search_index.source_import_id` and `message_search_index.source_artifact_id` preserve source traceability for returned results.
+
+Constraint notes:
+
+- The FTS virtual table intentionally does not index `original_metadata_json`.
+- Search snippets are derived from indexed message body text only.
+- Rebuild logic clears and recreates rows for a single case so the index remains deterministic and idempotent.
+
+Tests added:
+
+- `tests/DumpLens.Tests.Integration/Persistence/MessageSearchIndexMigrationTests.cs`
+- `tests/DumpLens.Tests.Integration/Search/SqliteMessageSearchIndexServiceTests.cs`
 
 ## T0008 Case Package Manifest
 

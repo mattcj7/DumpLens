@@ -38,6 +38,9 @@ public sealed class SqliteMigrationRunnerTests
         Assert.True(await reader.ReadAsync());
         Assert.Equal("0003", reader.GetString(0));
         Assert.Equal("communication_schema", reader.GetString(1));
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal("0004", reader.GetString(0));
+        Assert.Equal("message_search_index", reader.GetString(1));
         Assert.False(await reader.ReadAsync());
     }
 
