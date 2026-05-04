@@ -6,6 +6,7 @@ using DumpLens.Application.Cases;
 using DumpLens.Application.Conversations;
 using DumpLens.Application.Imports;
 using DumpLens.Application.MessageImports;
+using DumpLens.Application.Search;
 using DumpLens.Application.Sources;
 
 namespace DumpLens.App.ViewModels;
@@ -19,6 +20,7 @@ public sealed class MainShellViewModel : ObservableObject
     private readonly Func<string, IAuditLogger>? _auditLoggerFactory;
     private readonly IConversationReader _conversationReader;
     private readonly IImportWarningSummaryReader _importWarningSummaryReader;
+    private readonly IMessageSearchIndexService _messageSearchIndexService;
     private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
     private readonly ISourceManagerService _sourceManagerService;
     private readonly IMessageImportService _messageImportService;
@@ -36,6 +38,7 @@ public sealed class MainShellViewModel : ObservableObject
     private WorkspaceViewModelBase _currentWorkspace;
     private InspectorViewModelBase _inspector;
     private ConversationWorkspaceViewModel? _conversationWorkspace;
+    private SearchWorkspaceViewModel? _searchWorkspace;
     private SourceManagerViewModel? _sourceManagerWorkspace;
 
     public MainShellViewModel()
@@ -47,6 +50,7 @@ public sealed class MainShellViewModel : ObservableObject
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
+            new UnavailableMessageSearchIndexService(),
             new EmptyImportWarningSummaryReader(),
             auditLoggerFactory: null,
             logAction: null)
@@ -64,6 +68,7 @@ public sealed class MainShellViewModel : ObservableObject
             new UnavailableSourceRegistrationService(),
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
+            new UnavailableMessageSearchIndexService(),
             new EmptyImportWarningSummaryReader(),
             auditLoggerFactory: null,
             logAction)
@@ -78,6 +83,7 @@ public sealed class MainShellViewModel : ObservableObject
         ISourceRegistrationService sourceRegistrationService,
         IMessageImportService messageImportService,
         ICallImportService callImportService,
+        IMessageSearchIndexService messageSearchIndexService,
         IImportWarningSummaryReader importWarningSummaryReader,
         Func<string, IAuditLogger>? auditLoggerFactory,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
@@ -89,6 +95,7 @@ public sealed class MainShellViewModel : ObservableObject
         _sourceRegistrationService = sourceRegistrationService ?? throw new ArgumentNullException(nameof(sourceRegistrationService));
         _messageImportService = messageImportService ?? throw new ArgumentNullException(nameof(messageImportService));
         _callImportService = callImportService ?? throw new ArgumentNullException(nameof(callImportService));
+        _messageSearchIndexService = messageSearchIndexService ?? throw new ArgumentNullException(nameof(messageSearchIndexService));
         _importWarningSummaryReader = importWarningSummaryReader ?? throw new ArgumentNullException(nameof(importWarningSummaryReader));
         _auditLoggerFactory = auditLoggerFactory;
         _logAction = logAction ?? NoOpLogAction;
@@ -101,6 +108,7 @@ public sealed class MainShellViewModel : ObservableObject
         _inspector = CreatePlaceholderInspector(_selectedNavigationItem);
         OpenCaseCreationCommand = new RelayCommand(OpenCaseCreation);
         OpenImportWizardCommand = new RelayCommand(OpenImportWizard);
+        OpenSearchWorkspaceCommand = new RelayCommand(OpenSearchWorkspace);
     }
 
     public CaseCreationViewModel? CaseCreation
@@ -156,6 +164,8 @@ public sealed class MainShellViewModel : ObservableObject
     public RelayCommand OpenCaseCreationCommand { get; }
 
     public RelayCommand OpenImportWizardCommand { get; }
+
+    public RelayCommand OpenSearchWorkspaceCommand { get; }
 
     public NavigationItemViewModel SelectedNavigationItem
     {
@@ -251,6 +261,17 @@ public sealed class MainShellViewModel : ObservableObject
         IsImportWizardOpen = true;
     }
 
+    private void OpenSearchWorkspace()
+    {
+        var searchItem = NavigationItems.FirstOrDefault(
+            static item => string.Equals(item.Label, "Search", StringComparison.Ordinal));
+
+        if (searchItem is not null)
+        {
+            SelectedNavigationItem = searchItem;
+        }
+    }
+
     private void CloseImportWizard()
     {
         IsImportWizardOpen = false;
@@ -284,6 +305,7 @@ public sealed class MainShellViewModel : ObservableObject
     private void RefreshSurfaceState()
     {
         DetachConversationWorkspace();
+        DetachSearchWorkspace();
         DetachSourceManagerWorkspace();
 
         if (string.Equals(_selectedNavigationItem.Label, "Conversations", StringComparison.Ordinal))
@@ -301,6 +323,15 @@ public sealed class MainShellViewModel : ObservableObject
             _sourceManagerWorkspace.PropertyChanged += OnSourceManagerWorkspacePropertyChanged;
             CurrentWorkspace = _sourceManagerWorkspace;
             Inspector = _sourceManagerWorkspace.CurrentDetail;
+            return;
+        }
+
+        if (string.Equals(_selectedNavigationItem.Label, "Search", StringComparison.Ordinal))
+        {
+            _searchWorkspace = new SearchWorkspaceViewModel(_activeCase, _messageSearchIndexService, _logAction);
+            _searchWorkspace.PropertyChanged += OnSearchWorkspacePropertyChanged;
+            CurrentWorkspace = _searchWorkspace;
+            Inspector = _searchWorkspace.CurrentInspector;
             return;
         }
 
@@ -330,6 +361,17 @@ public sealed class MainShellViewModel : ObservableObject
         _sourceManagerWorkspace = null;
     }
 
+    private void DetachSearchWorkspace()
+    {
+        if (_searchWorkspace is null)
+        {
+            return;
+        }
+
+        _searchWorkspace.PropertyChanged -= OnSearchWorkspacePropertyChanged;
+        _searchWorkspace = null;
+    }
+
     private void OnConversationWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (!ReferenceEquals(sender, _conversationWorkspace) ||
@@ -350,6 +392,17 @@ public sealed class MainShellViewModel : ObservableObject
         }
 
         Inspector = _sourceManagerWorkspace!.CurrentDetail;
+    }
+
+    private void OnSearchWorkspacePropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (!ReferenceEquals(sender, _searchWorkspace) ||
+            !string.Equals(e.PropertyName, nameof(SearchWorkspaceViewModel.CurrentInspector), StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        Inspector = _searchWorkspace!.CurrentInspector;
     }
 
     private static IReadOnlyList<NavigationItemViewModel> CreateNavigationItems()
@@ -380,6 +433,14 @@ public sealed class MainShellViewModel : ObservableObject
                 nextStepText: "Later tickets can add source-reference expansion, review controls, and related investigative workflows without changing this shell layout.",
                 inspectorDescription: "The right panel shows the selected conversation summary and safe source context for the active message.",
                 inspectorBodyText: "Select a conversation and message to inspect safe source context."),
+            CreateItem(
+                label: "Search",
+                summary: "Case-scoped message search.",
+                description: "Search imported messages in the active case and inspect safe source-backed references for each result.",
+                bodyText: "Enter search terms to find matching messages in the active case, then select a result to inspect safe source context.",
+                nextStepText: "Use Rebuild Search Index if this case has new imports or if results seem incomplete.",
+                inspectorDescription: "The right panel shows the selected result and its safe message and source references.",
+                inspectorBodyText: "Select a search result to inspect safe message and source context."),
             CreateItem(
                 label: "Timeline",
                 summary: "Chronological event review.",
@@ -540,6 +601,23 @@ public sealed class MainShellViewModel : ObservableObject
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("No source registration service is configured for this shell instance.");
+        }
+    }
+
+    private sealed class UnavailableMessageSearchIndexService : IMessageSearchIndexService
+    {
+        public Task<RebuildMessageSearchIndexResult> RebuildAsync(
+            RebuildMessageSearchIndexRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No message search service is configured for this shell instance.");
+        }
+
+        public Task<SearchMessagesResult> SearchAsync(
+            SearchMessagesRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No message search service is configured for this shell instance.");
         }
     }
 }

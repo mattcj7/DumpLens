@@ -11,6 +11,7 @@ public class MainShellViewModelTests
         "Dashboard",
         "Sources",
         "Conversations",
+        "Search",
         "Timeline",
         "Gaps & Deletions",
         "Entities & Aliases",
@@ -76,6 +77,23 @@ public class MainShellViewModelTests
     }
 
     [Fact]
+    public void MainShellViewModel_Selecting_Search_Updates_Current_Workspace()
+    {
+        var shellViewModel = CreateShellViewModel();
+        var searchItem = GetNavigationItems(shellViewModel)
+            .Single(item => GetStringProperty(item, "Label") == "Search");
+
+        SetPropertyValue(shellViewModel, "SelectedNavigationItem", searchItem);
+
+        var workspace = GetPropertyValue(shellViewModel, "CurrentWorkspace");
+        var title = GetStringProperty(workspace, "Title");
+        var description = GetStringProperty(workspace, "Description");
+
+        Assert.Equal("Search", title);
+        Assert.Contains("source-backed references", description, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void MainShellViewModel_Contains_All_Required_Labels_Exactly_Once()
     {
         var shellViewModel = CreateShellViewModel();
@@ -103,6 +121,18 @@ public class MainShellViewModelTests
 
         Assert.False(GetBooleanProperty(shellViewModel, "IsImportWizardOpen"));
         Assert.Null(GetNullablePropertyValue(shellViewModel, "ImportWizard"));
+    }
+
+    [Fact]
+    public void MainShellViewModel_Open_Search_Workspace_Command_Selects_Search()
+    {
+        var shellViewModel = CreateShellViewModel();
+        var openSearchCommand = Assert.IsAssignableFrom<ICommand>(GetPropertyValue(shellViewModel, "OpenSearchWorkspaceCommand"));
+
+        openSearchCommand.Execute(null);
+
+        var selectedItem = GetPropertyValue(shellViewModel, "SelectedNavigationItem");
+        Assert.Equal("Search", GetStringProperty(selectedItem, "Label"));
     }
 
     private static object CreateShellViewModel()

@@ -1,0 +1,16 @@
+{
+  "manifest_version": "1",
+  "source_import_id": "5e086122363b4c8e880fcaa18752f938",
+  "case_id": "47226db4437d499ab10c8ac571983c89",
+  "source_name": "dumplens_t0023_messages",
+  "source_type": "csv_messages",
+  "original_filename": "dumplens_t0023_messages.csv",
+  "stored_relative_path": "imports/source_5e086122363b/original/dumplens_t0023_messages.csv",
+  "file_size_bytes": 167,
+  "file_sha256": "1245529b8d2f2ea96f8992fcaec3766c2f14a8a04b3743c1b67f03da31b6853f",
+  "imported_at_utc": "2026-05-04T01:38:40.6605708\u002B00:00",
+  "source_folder_relative_path": "imports/source_5e086122363b",
+  "sha256_relative_path": "imports/source_5e086122363b/sha256.txt",
+  "app_name": "DumpLens",
+  "copy_mode": "copy"
+}

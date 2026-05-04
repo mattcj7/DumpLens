@@ -202,6 +202,188 @@
             </Grid>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:SearchWorkspaceViewModel}">
+            <Grid Margin="0,24,0,0">
+                <Border Padding="18"
+                        Background="#FFF7F8FA"
+                        BorderBrush="#FFD6DCE3"
+                        BorderThickness="1"
+                        CornerRadius="8"
+                        Visibility="{Binding IsNoActiveCaseVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <TextBlock Foreground="#FF52606D"
+                               Text="Create or open a case to search messages."
+                               TextWrapping="Wrap" />
+                </Border>
+
+                <Grid Visibility="{Binding HasActiveCase, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="Auto" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+
+                    <Border Padding="16"
+                            Background="#FFF7F8FA"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <StackPanel>
+                            <TextBlock FontSize="16"
+                                       FontWeight="SemiBold"
+                                       Text="Message Search" />
+                            <TextBlock Margin="0,6,0,0"
+                                       Foreground="#FF52606D"
+                                       Text="Search imported messages in the active case. Rebuild the search index if this case has new imports or if results seem incomplete."
+                                       TextWrapping="Wrap" />
+
+                            <Grid Margin="0,16,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+
+                                <TextBox Margin="0,0,12,0"
+                                         Padding="10,8"
+                                         IsEnabled="{Binding CanEditSearchQuery, Mode=OneWay}"
+                                         Text="{Binding SearchQueryText, UpdateSourceTrigger=PropertyChanged}" />
+                                <Button Grid.Column="1"
+                                        Margin="0,0,12,0"
+                                        Padding="16,8"
+                                        Command="{Binding SearchCommand}"
+                                        Content="Search" />
+                                <Button Grid.Column="2"
+                                        Padding="16,8"
+                                        Command="{Binding RebuildSearchIndexCommand}"
+                                        Content="Rebuild Search Index" />
+                            </Grid>
+
+                            <Border Margin="0,14,0,0"
+                                    Padding="12"
+                                    Background="#FFEEF6FF"
+                                    BorderBrush="#FFBDD6F6"
+                                    BorderThickness="1"
+                                    CornerRadius="6">
+                                <TextBlock Foreground="#FF1D4E89"
+                                           Text="{Binding SearchResultCount, Mode=OneWay, StringFormat=Results: {0}}"
+                                           TextWrapping="Wrap" />
+                            </Border>
+                        </StackPanel>
+                    </Border>
+
+                    <Border Grid.Row="1"
+                            Margin="0,16,0,0"
+                            Padding="14"
+                            Background="#FFEEF6FF"
+                            BorderBrush="#FFBDD6F6"
+                            BorderThickness="1"
+                            CornerRadius="6">
+                        <TextBlock Foreground="#FF1D4E89"
+                                   Text="{Binding StatusMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <Grid Grid.Row="2"
+                          Margin="0,16,0,0">
+                        <Border Padding="16"
+                                Background="#FFFFF4F4"
+                                BorderBrush="#FFF3B0B0"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding HasError, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Foreground="#FF8A1C1C"
+                                       Text="{Binding ErrorMessage, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <Border Padding="16"
+                                Background="#FFFDF5E8"
+                                BorderBrush="#FFEAC46A"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding HasValidationMessage, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Foreground="#FF6B4E16"
+                                       Text="{Binding ValidationMessage, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <Border Padding="16"
+                                Background="White"
+                                BorderBrush="#FFD6DCE3"
+                                BorderThickness="1"
+                                CornerRadius="8"
+                                Visibility="{Binding IsResultsEmptyStateVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <TextBlock Foreground="#FF52606D"
+                                       Text="{Binding ResultsEmptyStateMessage, Mode=OneWay}"
+                                       TextWrapping="Wrap" />
+                        </Border>
+
+                        <ListBox ItemsSource="{Binding Results, Mode=OneWay}"
+                                 SelectedItem="{Binding SelectedResult, Mode=TwoWay}"
+                                 Background="Transparent"
+                                 BorderThickness="0"
+                                 ScrollViewer.CanContentScroll="True"
+                                 VirtualizingPanel.IsVirtualizing="True"
+                                 VirtualizingPanel.VirtualizationMode="Recycling"
+                                 Visibility="{Binding HasResults, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                            <ListBox.ItemsPanel>
+                                <ItemsPanelTemplate>
+                                    <VirtualizingStackPanel />
+                                </ItemsPanelTemplate>
+                            </ListBox.ItemsPanel>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Border Margin="0,0,0,12"
+                                            Padding="14"
+                                            Background="White"
+                                            BorderBrush="#FFD6DCE3"
+                                            BorderThickness="1"
+                                            CornerRadius="8">
+                                        <StackPanel>
+                                            <WrapPanel>
+                                                <TextBlock FontWeight="SemiBold"
+                                                           Text="{Binding TimestampDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding PlatformDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding DirectionDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding DeletedStatusDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding RankDisplay, Mode=OneWay}" />
+                                            </WrapPanel>
+
+                                            <TextBlock Margin="0,10,0,0"
+                                                       Text="{Binding SnippetDisplay, Mode=OneWay}"
+                                                       TextWrapping="Wrap" />
+
+                                            <WrapPanel Margin="0,10,0,0">
+                                                <TextBlock Foreground="#FF52606D"
+                                                           Text="{Binding ConversationDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding SourceImportDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding SourceArtifactDisplay, Mode=OneWay}" />
+                                                <TextBlock Margin="12,0,0,0"
+                                                           Foreground="#FF52606D"
+                                                           Text="{Binding SourceThreadDisplay, Mode=OneWay}" />
+                                            </WrapPanel>
+                                        </StackPanel>
+                                    </Border>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:ConversationWorkspaceViewModel}">
             <Grid Margin="0,24,0,0">
                 <Grid.RowDefinitions>
@@ -807,6 +989,84 @@
                 </StackPanel>
             </ScrollViewer>
         </DataTemplate>
+
+        <DataTemplate DataType="{x:Type vm:SearchInspectorViewModel}">
+            <ScrollViewer Margin="0,20,0,0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <TextBlock Foreground="#FF52606D"
+                                   Text="{Binding StateMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <Border Margin="0,16,0,0"
+                            Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8"
+                            Visibility="{Binding HasSelection, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}">
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="*" />
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <TextBlock FontWeight="SemiBold" Text="Message ID" />
+                            <TextBlock Grid.Column="1" Margin="12,0,0,0" Text="{Binding MessageIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="1" FontWeight="SemiBold" Text="Conversation" />
+                            <TextBlock Grid.Row="1" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ConversationIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="2" FontWeight="SemiBold" Text="Source Import" />
+                            <TextBlock Grid.Row="2" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceImportIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="3" FontWeight="SemiBold" Text="Source Artifact" />
+                            <TextBlock Grid.Row="3" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceArtifactIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="4" FontWeight="SemiBold" Text="Provider Message" />
+                            <TextBlock Grid.Row="4" Grid.Column="1" Margin="12,0,0,0" Text="{Binding ProviderMessageIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="5" FontWeight="SemiBold" Text="Source Thread" />
+                            <TextBlock Grid.Row="5" Grid.Column="1" Margin="12,0,0,0" Text="{Binding SourceThreadIdDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="6" FontWeight="SemiBold" Text="Timestamp" />
+                            <TextBlock Grid.Row="6" Grid.Column="1" Margin="12,0,0,0" Text="{Binding EventTimeUtcDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="7" FontWeight="SemiBold" Text="Platform" />
+                            <TextBlock Grid.Row="7" Grid.Column="1" Margin="12,0,0,0" Text="{Binding PlatformDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="8" FontWeight="SemiBold" Text="Direction" />
+                            <TextBlock Grid.Row="8" Grid.Column="1" Margin="12,0,0,0" Text="{Binding DirectionDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="9" FontWeight="SemiBold" Text="Deleted Status" />
+                            <TextBlock Grid.Row="9" Grid.Column="1" Margin="12,0,0,0" Text="{Binding DeletedStatusDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+
+                            <TextBlock Grid.Row="10" FontWeight="SemiBold" Text="Rank" />
+                            <TextBlock Grid.Row="10" Grid.Column="1" Margin="12,0,0,0" Text="{Binding RankDisplay, Mode=OneWay}" TextWrapping="Wrap" />
+                        </Grid>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -845,7 +1105,7 @@
                             Content="New Case" />
                     <Button Margin="0,0,8,0"
                             Padding="14,8"
-                            IsEnabled="False"
+                            Command="{Binding OpenSearchWorkspaceCommand}"
                             Content="Search" />
                     <Button Margin="0,0,8,0"
                             Padding="14,8"

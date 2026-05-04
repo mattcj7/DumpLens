@@ -2,6 +2,7 @@ using DumpLens.App.ViewModels;
 using DumpLens.Application.Audit;
 using DumpLens.Application.Conversations;
 using DumpLens.Application.Imports;
+using DumpLens.Application.Search;
 using DumpLens.Ingestion.Csv;
 using DumpLens.Ingestion.Xlsx;
 using DumpLens.Normalization.Identities;
@@ -12,6 +13,7 @@ using DumpLens.Persistence.Cases;
 using DumpLens.Persistence.Conversations;
 using DumpLens.Persistence.Imports;
 using DumpLens.Persistence.MessageImports;
+using DumpLens.Persistence.Search;
 using DumpLens.Persistence.Sources;
 using DumpLens.Security.FileHashing;
 
@@ -41,6 +43,7 @@ public partial class App : System.Windows.Application
         var timestampNormalizer = new TimestampNormalizer();
         var messageImportService = new SqliteMessageImportService(sourceImporters, identityNormalizer, timestampNormalizer);
         var callImportService = new SqliteCallImportService(sourceImporters, identityNormalizer, timestampNormalizer);
+        IMessageSearchIndexService messageSearchIndexService = new SqliteMessageSearchIndexService();
         var importWarningSummaryReader = new SqliteImportWarningSummaryReader();
         Func<string, IAuditLogger> auditLoggerFactory = connectionString => new SqliteAuditLogger(connectionString);
 
@@ -54,6 +57,7 @@ public partial class App : System.Windows.Application
                 sourceRegistrationService,
                 messageImportService,
                 callImportService,
+                messageSearchIndexService,
                 importWarningSummaryReader,
                 auditLoggerFactory,
                 _logger.LogInformation)

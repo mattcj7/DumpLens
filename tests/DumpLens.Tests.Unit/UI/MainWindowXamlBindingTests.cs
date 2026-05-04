@@ -39,6 +39,12 @@ public sealed class MainWindowXamlBindingTests
         Assert.Contains("{Binding Summary, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding CurrentWorkspace.Title, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding Inspector.Title, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding SearchResultCount, Mode=OneWay, StringFormat=Results: {0}}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding ResultsEmptyStateMessage, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding SnippetDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding SourceImportDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding HasSelection, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding MessageIdDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
     }
 
     private static string LoadNormalizedMainWindowXaml()
