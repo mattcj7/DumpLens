@@ -3,6 +3,7 @@ using System.Reflection;
 using System.Windows.Input;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Search;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.Tests.Unit.UI;
 
@@ -23,7 +24,7 @@ public sealed class SearchWorkspaceViewModelTests
         Assert.Equal(0, service.RebuildCallCount);
 
         var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-        Assert.Equal("Create or open a case to inspect search result context.", GetStringProperty(inspector, "Description"));
+        Assert.Equal("Create or open a case to inspect safe source references.", GetStringProperty(inspector, "Description"));
 
         Assert.Contains(logs, entry => entry.Operation == "search_workspace_opened");
         Assert.Contains(logs, entry => entry.Operation == "search_workspace_active_case_missing");
@@ -208,6 +209,15 @@ public sealed class SearchWorkspaceViewModelTests
     public async Task SearchWorkspaceViewModel_Selecting_Result_Updates_Inspector()
     {
         var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            DetailResult = CreateSourceReferenceDetail(
+                sourceImportId: "src-search-002",
+                sourceArtifactId: "art-search-002",
+                messageId: "msg-search-002",
+                providerMessageId: "provider-search-002",
+                sourceThreadId: "thread-search-002")
+        };
         var service = new FakeMessageSearchIndexService
         {
             SearchResultFactory = static _ => CreateSearchResult(
@@ -226,7 +236,7 @@ public sealed class SearchWorkspaceViewModelTests
                 ])
         };
 
-        var viewModel = CreateViewModel(CreateActiveCase(), service, logs);
+        var viewModel = CreateViewModel(CreateActiveCase(), service, logs, sourceReferenceReader);
         SetPropertyValue(viewModel, "SearchQueryText", "bravo");
 
         var command = Assert.IsAssignableFrom<ICommand>(GetPropertyValue(viewModel, "SearchCommand"));
@@ -240,17 +250,66 @@ public sealed class SearchWorkspaceViewModelTests
         await WaitForAsync(() =>
         {
             var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-            return GetBooleanProperty(inspector, "HasSelection");
+            return GetIntProperty(inspector, "Sections.Count") == 3;
         });
 
         var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-        Assert.Equal("msg-search-002", GetStringProperty(inspector, "MessageIdDisplay"));
-        Assert.Equal("conv-search-002", GetStringProperty(inspector, "ConversationIdDisplay"));
-        Assert.Equal("src-search-002", GetStringProperty(inspector, "SourceImportIdDisplay"));
-        Assert.Equal("art-search-002", GetStringProperty(inspector, "SourceArtifactIdDisplay"));
-        Assert.Equal("provider-search-002", GetStringProperty(inspector, "ProviderMessageIdDisplay"));
-        Assert.Equal("thread-search-002", GetStringProperty(inspector, "SourceThreadIdDisplay"));
+        Assert.Equal("Source reference loaded.", GetStringProperty(inspector, "StateMessage"));
+        Assert.Equal("src-search-002", GetFieldValue(inspector, "Source Reference", "Source Import ID"));
+        Assert.Equal("art-search-002", GetFieldValue(inspector, "Artifact Reference", "Source Artifact ID"));
+        Assert.Equal("provider-search-002", GetFieldValue(inspector, "Message Reference", "Provider Message ID"));
+        Assert.Equal("thread-search-002", GetFieldValue(inspector, "Message Reference", "Source Thread ID"));
         Assert.Contains(logs, entry => entry.Operation == "search_workspace_result_selected");
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_requested");
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_loaded");
+    }
+
+    [Fact]
+    public async Task SearchWorkspaceViewModel_Missing_Source_Reference_Shows_Safe_Error()
+    {
+        var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            DetailResult = null
+        };
+        var service = new FakeMessageSearchIndexService
+        {
+            SearchResultFactory = static _ => CreateSearchResult(
+                isQueryValid: true,
+                resultCount: 1,
+                results:
+                [
+                    CreateMessageSearchResult(
+                        messageId: "msg-search-004",
+                        snippet: "[[charlie]] synthetic result",
+                        conversationId: "conv-search-004",
+                        sourceImportId: "src-search-004",
+                        sourceArtifactId: "art-search-004",
+                        sourceThreadId: "thread-search-004",
+                        providerMessageId: "provider-search-004")
+                ])
+        };
+
+        var viewModel = CreateViewModel(CreateActiveCase(), service, logs, sourceReferenceReader);
+        SetPropertyValue(viewModel, "SearchQueryText", "charlie");
+
+        var command = Assert.IsAssignableFrom<ICommand>(GetPropertyValue(viewModel, "SearchCommand"));
+        command.Execute(null);
+
+        await WaitForAsync(() => GetIntProperty(viewModel, "SearchResultCount") == 1);
+
+        var result = GetCollection(viewModel, "Results")[0];
+        SetPropertyValue(viewModel, "SelectedResult", result);
+
+        await WaitForAsync(() =>
+        {
+            var inspector = GetPropertyValue(viewModel, "CurrentInspector");
+            return string.Equals(GetStringProperty(inspector, "StateMessage"), "Source reference could not be loaded.", StringComparison.Ordinal);
+        });
+
+        var inspector = GetPropertyValue(viewModel, "CurrentInspector");
+        Assert.Equal("Source reference could not be loaded.", GetStringProperty(inspector, "StateMessage"));
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_missing");
     }
 
     [Fact]
@@ -390,10 +449,59 @@ public sealed class SearchWorkspaceViewModelTests
         };
     }
 
+    private static SourceReferenceDetail CreateSourceReferenceDetail(
+        string sourceImportId,
+        string? sourceArtifactId,
+        string? messageId,
+        string? providerMessageId = null,
+        string? sourceThreadId = null)
+    {
+        return new SourceReferenceDetail
+        {
+            CaseId = "case-search-001",
+            SourceImportId = sourceImportId,
+            SourceName = "Synthetic Search Source",
+            SourceType = "csv_messages",
+            Platform = "sms",
+            ImportStatus = "imported",
+            OriginalFilename = $"{sourceImportId}.csv",
+            StoredRelativePath = $"imports/source_{sourceImportId}/original/{sourceImportId}.csv",
+            FileSizeBytes = 2048,
+            FileSha256 = "abcdef123456abcdef123456abcdef123456abcdef123456abcdef123456abcd",
+            ImportedAtUtc = DateTimeOffset.Parse("2026-05-01T12:00:00Z"),
+            HasSourceMetadata = true,
+            WasArtifactReferenceRequested = sourceArtifactId is not null,
+            WasMessageReferenceRequested = messageId is not null,
+            ArtifactReference = sourceArtifactId is null
+                ? null
+                : new SourceArtifactReferenceDetail
+                {
+                    SourceArtifactId = sourceArtifactId,
+                    ArtifactType = "message_row",
+                    ArtifactLocator = $"row:{sourceArtifactId}",
+                    HasOriginalMetadata = true
+                },
+            MessageReference = messageId is null
+                ? null
+                : new MessageSourceReferenceDetail
+                {
+                    MessageId = messageId,
+                    SourceArtifactId = sourceArtifactId,
+                    ProviderMessageId = providerMessageId,
+                    SourceThreadId = sourceThreadId,
+                    EventTimeUtc = DateTimeOffset.Parse("2026-05-01T09:30:00Z"),
+                    DeletedStatus = "present",
+                    MessageHashPrefix = "abcdef123456",
+                    HasOriginalMetadata = true
+                }
+        };
+    }
+
     private static object CreateViewModel(
         CreateCaseResult? activeCase,
         IMessageSearchIndexService service,
-        List<UiLogEntry> logs)
+        List<UiLogEntry> logs,
+        ISourceReferenceReader? sourceReferenceReader = null)
     {
         var assembly = ViewModelAssemblyLoader.Load();
         var type = assembly.GetType("DumpLens.App.ViewModels.SearchWorkspaceViewModel", throwOnError: true)!;
@@ -403,7 +511,7 @@ public sealed class SearchWorkspaceViewModelTests
                 logs.Add(new UiLogEntry(operation, correlationId, message, fields ?? new Dictionary<string, string>(StringComparer.Ordinal)));
             };
 
-        return Activator.CreateInstance(type, activeCase, service, logAction)!;
+        return Activator.CreateInstance(type, activeCase, service, sourceReferenceReader ?? new FakeSourceReferenceReader(), logAction)!;
     }
 
     private static CreateCaseResult CreateActiveCase()
@@ -435,6 +543,11 @@ public sealed class SearchWorkspaceViewModelTests
 
     private static int GetIntProperty(object instance, string propertyName)
     {
+        if (propertyName.Contains('.', StringComparison.Ordinal))
+        {
+            return Assert.IsType<int>(GetNestedPropertyValue(instance, propertyName));
+        }
+
         return Assert.IsType<int>(GetPropertyValue(instance, propertyName));
     }
 
@@ -450,6 +563,26 @@ public sealed class SearchWorkspaceViewModelTests
     private static string GetStringProperty(object instance, string propertyName)
     {
         return Assert.IsType<string>(GetPropertyValue(instance, propertyName));
+    }
+
+    private static object GetNestedPropertyValue(object instance, string propertyPath)
+    {
+        var current = instance;
+        foreach (var segment in propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            current = GetPropertyValue(current, segment);
+        }
+
+        return current;
+    }
+
+    private static string GetFieldValue(object inspector, string sectionTitle, string fieldLabel)
+    {
+        var sections = GetCollection(inspector, "Sections");
+        var section = sections.Single(item => string.Equals(GetStringProperty(item, "Title"), sectionTitle, StringComparison.Ordinal));
+        var fields = GetCollection(section, "Fields");
+        var field = fields.Single(item => string.Equals(GetStringProperty(item, "Label"), fieldLabel, StringComparison.Ordinal));
+        return GetStringProperty(field, "Value");
     }
 
     private static void SetPropertyValue(object instance, string propertyName, object? value)
@@ -524,6 +657,25 @@ public sealed class SearchWorkspaceViewModelTests
             }
 
             return Task.FromResult(SearchResultFactory?.Invoke(request) ?? CreateSearchResult(isQueryValid: true, resultCount: 0, results: []));
+        }
+    }
+
+    private sealed class FakeSourceReferenceReader : ISourceReferenceReader
+    {
+        public SourceReferenceDetail? DetailResult { get; init; }
+
+        public Exception? Exception { get; init; }
+
+        public Task<SourceReferenceDetail?> LoadAsync(
+            LoadSourceReferenceRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (Exception is not null)
+            {
+                throw Exception;
+            }
+
+            return Task.FromResult(DetailResult);
         }
     }
 }

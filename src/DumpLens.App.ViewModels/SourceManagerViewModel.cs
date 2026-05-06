@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Sources;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.App.ViewModels;
 
@@ -19,8 +20,10 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
     private readonly string _correlationId;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
     private readonly ISourceManagerService _sourceManagerService;
-    private SourceDetailViewModel _currentDetail;
+    private readonly ISourceReferenceReader _sourceReferenceReader;
+    private SourceReferenceInspectorViewModel _currentDetail;
     private string? _errorMessage;
+    private int _inspectorLoadVersion;
     private bool _isLoading;
     private SourceListItemViewModel? _selectedSource;
     private string _statusMessage;
@@ -28,6 +31,7 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
     public SourceManagerViewModel(
         CreateCaseResult? activeCase,
         ISourceManagerService sourceManagerService,
+        ISourceReferenceReader sourceReferenceReader,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
         : base(
             "Sources",
@@ -35,14 +39,15 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
     {
         _activeCase = activeCase;
         _sourceManagerService = sourceManagerService ?? throw new ArgumentNullException(nameof(sourceManagerService));
+        _sourceReferenceReader = sourceReferenceReader ?? throw new ArgumentNullException(nameof(sourceReferenceReader));
         _logAction = logAction ?? NoOpLogAction;
         _correlationId = Guid.NewGuid().ToString("N");
         _statusMessage = activeCase is null
             ? "Create or open a case to view imported sources."
             : "Loading sources for the active case.";
         _currentDetail = activeCase is null
-            ? SourceDetailViewModel.CreateActiveCaseMissing()
-            : SourceDetailViewModel.CreateNoSelection();
+            ? SourceReferenceInspectorViewModel.CreateActiveCaseMissing()
+            : SourceReferenceInspectorViewModel.CreateNoSelection();
         Sources = new ObservableCollection<SourceListItemViewModel>();
 
         _logAction(
@@ -64,7 +69,7 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
         _ = LoadAsync();
     }
 
-    public SourceDetailViewModel CurrentDetail
+    public SourceReferenceInspectorViewModel CurrentDetail
     {
         get => _currentDetail;
         private set => SetProperty(ref _currentDetail, value);
@@ -144,7 +149,7 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
         IsLoading = true;
         ErrorMessage = null;
         StatusMessage = "Loading sources for the active case.";
-        CurrentDetail = SourceDetailViewModel.CreateNoSelection();
+        CurrentDetail = SourceReferenceInspectorViewModel.CreateNoSelection();
 
         _logAction(
             SourceListLoadRequestedOperation,
@@ -182,7 +187,7 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
             SelectedSource = Sources.FirstOrDefault();
             if (SelectedSource is null)
             {
-                CurrentDetail = SourceDetailViewModel.CreateNoSelection();
+                CurrentDetail = SourceReferenceInspectorViewModel.CreateNoSelection();
             }
         }
         catch (Exception ex)
@@ -191,7 +196,7 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
             SelectedSource = null;
             ErrorMessage = "Sources could not be loaded. Check the case package and try again.";
             StatusMessage = ErrorMessage;
-            CurrentDetail = SourceDetailViewModel.CreateLoadFailure();
+            CurrentDetail = SourceReferenceInspectorViewModel.CreateLoadFailure();
 
             _logAction(
                 SourceListLoadFailedOperation,
@@ -212,17 +217,18 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
     {
         if (_activeCase is null)
         {
-            CurrentDetail = SourceDetailViewModel.CreateActiveCaseMissing();
+            CurrentDetail = SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
             return;
         }
 
         if (selectedSource is null)
         {
-            CurrentDetail = SourceDetailViewModel.CreateNoSelection();
+            CurrentDetail = SourceReferenceInspectorViewModel.CreateNoSelection();
             return;
         }
 
-        CurrentDetail = SourceDetailViewModel.CreateLoading(selectedSource.SourceImportId);
+        var requestVersion = Interlocked.Increment(ref _inspectorLoadVersion);
+        CurrentDetail = SourceReferenceInspectorViewModel.CreateLoading();
         _logAction(
             SourceSelectedOperation,
             _correlationId,
@@ -232,25 +238,82 @@ public sealed class SourceManagerViewModel : WorkspaceViewModelBase
                 ["source_import_id"] = selectedSource.SourceImportId
             });
 
+        _logAction(
+            "source_reference_inspector_requested",
+            _correlationId,
+            "Source reference inspector requested.",
+            new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+            {
+                ["source_import_id"] = selectedSource.SourceImportId,
+                ["source_artifact_id"] = "-",
+                ["message_id"] = "-"
+            });
+
         try
         {
-            var detail = await _sourceManagerService.GetDetailAsync(
-                    new LoadSourceImportDetailRequest
+            var detail = await _sourceReferenceReader.LoadAsync(
+                    new LoadSourceReferenceRequest
                     {
                         CaseId = _activeCase.CaseId,
                         CaseDatabasePath = _activeCase.DatabasePath,
                         CasePackageRootPath = _activeCase.PackageRootPath,
-                        SourceImportId = selectedSource.SourceImportId
+                        SourceImportId = selectedSource.SourceImportId,
+                        CorrelationId = _correlationId
                     })
-                ;
+                .ConfigureAwait(false);
 
-            CurrentDetail = detail is null
-                ? SourceDetailViewModel.CreateLoadFailure()
-                : SourceDetailViewModel.From(detail);
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedSource, selectedSource))
+            {
+                return;
+            }
+
+            if (detail is null)
+            {
+                CurrentDetail = SourceReferenceInspectorViewModel.CreateLoadFailure();
+                _logAction(
+                    "source_reference_inspector_missing",
+                    _correlationId,
+                    "Source reference inspector target was not found.",
+                    new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                    {
+                        ["source_import_id"] = selectedSource.SourceImportId,
+                        ["source_artifact_id"] = "-",
+                        ["message_id"] = "-"
+                    });
+                return;
+            }
+
+            CurrentDetail = SourceReferenceInspectorViewModel.From(detail);
+            _logAction(
+                "source_reference_inspector_loaded",
+                _correlationId,
+                "Source reference inspector loaded.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["source_import_id"] = detail.SourceImportId,
+                    ["source_artifact_id"] = detail.ArtifactReference?.SourceArtifactId ?? "-",
+                    ["message_id"] = detail.MessageReference?.MessageId ?? "-"
+                });
         }
-        catch
+        catch (Exception exception)
         {
-            CurrentDetail = SourceDetailViewModel.CreateLoadFailure();
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedSource, selectedSource))
+            {
+                return;
+            }
+
+            CurrentDetail = SourceReferenceInspectorViewModel.CreateLoadFailure();
+            _logAction(
+                "source_reference_inspector_load_failed",
+                _correlationId,
+                "Source reference inspector load failed.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["source_import_id"] = selectedSource.SourceImportId,
+                    ["source_artifact_id"] = "-",
+                    ["message_id"] = "-",
+                    ["failure_type"] = exception.GetType().Name
+                });
         }
     }
 

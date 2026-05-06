@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Sources;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.Tests.Unit.UI;
 
@@ -22,7 +23,7 @@ public sealed class SourceManagerViewModelTests
         Assert.Equal(0, service.SummariesCallCount);
 
         var detail = GetPropertyValue(viewModel, "CurrentDetail");
-        Assert.Equal("Create or open a case to inspect source details.", GetStringProperty(detail, "Description"));
+        Assert.Equal("Create or open a case to inspect safe source references.", GetStringProperty(detail, "Description"));
 
         Assert.Contains(logs, entry => entry.Operation == "source_manager_opened");
         Assert.Contains(logs, entry => entry.Operation == "source_manager_active_case_missing");
@@ -32,71 +33,71 @@ public sealed class SourceManagerViewModelTests
     public async Task SourceManagerViewModel_Active_Case_Loads_Summaries_And_First_Detail()
     {
         var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            Details =
+            {
+                ["src-002"] = CreateSourceReferenceDetail("src-002", "Synthetic Messages B"),
+                ["src-001"] = CreateSourceReferenceDetail("src-001", "Synthetic Messages A")
+            }
+        };
         var service = new FakeSourceManagerService
         {
             Summaries =
             [
                 CreateSummary("src-002", "Synthetic Messages B", 20, 3, "bbb222bbb222bbb222bbb222"),
                 CreateSummary("src-001", "Synthetic Messages A", 10, 1, "aaa111aaa111aaa111aaa111")
-            ],
-            Details =
-            {
-                ["src-002"] = CreateDetail("src-002", "Synthetic Messages B", 20, 3, [("missing_timestamp", 2), ("duplicate_row", 1)]),
-                ["src-001"] = CreateDetail("src-001", "Synthetic Messages A", 10, 1, [("unknown_timezone", 1)])
-            }
+            ]
         };
 
-        var viewModel = CreateViewModel(CreateActiveCase(), service, logs);
+        var viewModel = CreateViewModel(CreateActiveCase(), service, logs, sourceReferenceReader);
 
         await WaitForAsync(() => GetIntProperty(viewModel, "SourceCount") == 2);
         await WaitForAsync(() =>
         {
             var detail = GetPropertyValue(viewModel, "CurrentDetail");
-            return string.Equals(GetStringProperty(detail, "SourceImportId"), "src-002", StringComparison.Ordinal);
+            return string.Equals(GetFieldValue(detail, "Source Reference", "Source Import ID"), "src-002", StringComparison.Ordinal);
         });
 
         Assert.Equal("2 sources loaded.", GetStringProperty(viewModel, "StatusMessage"));
         Assert.Equal(30, GetIntProperty(viewModel, "TotalRecordCount"));
         Assert.Equal(4, GetIntProperty(viewModel, "TotalWarningCount"));
         Assert.Equal(1, service.SummariesCallCount);
-        Assert.Equal(1, service.DetailCallCount);
+        Assert.Equal(1, sourceReferenceReader.CallCount);
 
         var selectedSource = GetPropertyValue(viewModel, "SelectedSource");
         Assert.Equal("src-002", GetStringProperty(selectedSource, "SourceImportId"));
 
         var detail = GetPropertyValue(viewModel, "CurrentDetail");
-        Assert.Equal("Synthetic Messages B", GetStringProperty(detail, "SourceName"));
-        Assert.Equal("20", GetStringProperty(detail, "RecordCountDisplay"));
-        Assert.Equal("3", GetStringProperty(detail, "WarningCountDisplay"));
-
-        var warningSummary = GetPropertyValue(detail, "WarningSummary");
-        var warningCodes = GetCollection(warningSummary, "WarningCodeCounts");
-        Assert.Equal(2, warningCodes.Count);
-        Assert.Equal("missing_timestamp", GetStringProperty(warningCodes[0], "WarningCode"));
-        Assert.Equal(2, GetIntProperty(warningCodes[0], "Count"));
+        Assert.Equal("Synthetic Messages B", GetFieldValue(detail, "Source Reference", "Source Name"));
+        Assert.Equal("src-002.csv", GetFieldValue(detail, "Source Reference", "Original Filename"));
         Assert.Contains(logs, entry => entry.Operation == "source_manager_source_list_load_succeeded");
         Assert.Contains(logs, entry => entry.Operation == "source_manager_source_selected");
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_loaded");
     }
 
     [Fact]
     public async Task SourceManagerViewModel_Selecting_A_Different_Source_Updates_Detail()
     {
         var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            Details =
+            {
+                ["src-002"] = CreateSourceReferenceDetail("src-002", "Synthetic Messages B"),
+                ["src-001"] = CreateSourceReferenceDetail("src-001", "Synthetic Messages A")
+            }
+        };
         var service = new FakeSourceManagerService
         {
             Summaries =
             [
                 CreateSummary("src-002", "Synthetic Messages B", 20, 3, "bbb222bbb222bbb222bbb222"),
                 CreateSummary("src-001", "Synthetic Messages A", 10, 1, "aaa111aaa111aaa111aaa111")
-            ],
-            Details =
-            {
-                ["src-002"] = CreateDetail("src-002", "Synthetic Messages B", 20, 3, [("missing_timestamp", 2), ("duplicate_row", 1)]),
-                ["src-001"] = CreateDetail("src-001", "Synthetic Messages A", 10, 1, [("unknown_timezone", 1)])
-            }
+            ]
         };
 
-        var viewModel = CreateViewModel(CreateActiveCase(), service, logs);
+        var viewModel = CreateViewModel(CreateActiveCase(), service, logs, sourceReferenceReader);
         await WaitForAsync(() => GetIntProperty(viewModel, "SourceCount") == 2);
 
         var sources = GetCollection(viewModel, "Sources");
@@ -105,12 +106,12 @@ public sealed class SourceManagerViewModelTests
         await WaitForAsync(() =>
         {
             var detail = GetPropertyValue(viewModel, "CurrentDetail");
-            return string.Equals(GetStringProperty(detail, "SourceImportId"), "src-001", StringComparison.Ordinal);
+            return string.Equals(GetFieldValue(detail, "Source Reference", "Source Import ID"), "src-001", StringComparison.Ordinal);
         });
 
         var detail = GetPropertyValue(viewModel, "CurrentDetail");
-        Assert.Equal("Synthetic Messages A", GetStringProperty(detail, "SourceName"));
-        Assert.Equal(2, service.DetailCallCount);
+        Assert.Equal("Synthetic Messages A", GetFieldValue(detail, "Source Reference", "Source Name"));
+        Assert.Equal(2, sourceReferenceReader.CallCount);
         Assert.Equal(2, logs.Count(entry => entry.Operation == "source_manager_source_selected"));
     }
 
@@ -142,23 +143,26 @@ public sealed class SourceManagerViewModelTests
     {
         const string sensitiveToken = "TOP_SECRET_PHONE_8035551234";
         var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            Details =
+            {
+                ["src-sensitive"] = CreateSourceReferenceDetail("src-sensitive", "Synthetic Sensitive Source")
+            }
+        };
         var service = new FakeSourceManagerService
         {
             Summaries =
             [
                 CreateSummary("src-sensitive", sensitiveToken, 12, 2, "abcdefabcdefabcdefabcdef")
-            ],
-            Details =
-            {
-                ["src-sensitive"] = CreateDetail("src-sensitive", sensitiveToken, 12, 2, [("missing_platform", 2)])
-            }
+            ]
         };
 
-        var viewModel = CreateViewModel(CreateActiveCase(), service, logs);
+        var viewModel = CreateViewModel(CreateActiveCase(), service, logs, sourceReferenceReader);
         await WaitForAsync(() =>
         {
             var detail = GetPropertyValue(viewModel, "CurrentDetail");
-            return string.Equals(GetStringProperty(detail, "SourceImportId"), "src-sensitive", StringComparison.Ordinal);
+            return string.Equals(GetFieldValue(detail, "Source Reference", "Source Import ID"), "src-sensitive", StringComparison.Ordinal);
         });
 
         Assert.All(logs, entry => Assert.DoesNotContain(sensitiveToken, entry.Message, StringComparison.Ordinal));
@@ -168,7 +172,8 @@ public sealed class SourceManagerViewModelTests
     private static object CreateViewModel(
         CreateCaseResult? activeCase,
         ISourceManagerService service,
-        List<UiLogEntry> logs)
+        List<UiLogEntry> logs,
+        ISourceReferenceReader? sourceReferenceReader = null)
     {
         var assembly = ViewModelAssemblyLoader.Load();
         var type = assembly.GetType("DumpLens.App.ViewModels.SourceManagerViewModel", throwOnError: true)!;
@@ -178,7 +183,7 @@ public sealed class SourceManagerViewModelTests
                 logs.Add(new UiLogEntry(operation, correlationId, message, fields ?? new Dictionary<string, string>(StringComparer.Ordinal)));
             };
 
-        return Activator.CreateInstance(type, activeCase, service, logAction)!;
+        return Activator.CreateInstance(type, activeCase, service, sourceReferenceReader ?? new FakeSourceReferenceReader(), logAction)!;
     }
 
     private static CreateCaseResult CreateActiveCase()
@@ -220,41 +225,26 @@ public sealed class SourceManagerViewModelTests
         };
     }
 
-    private static SourceImportDetail CreateDetail(
+    private static SourceReferenceDetail CreateSourceReferenceDetail(
         string sourceImportId,
-        string sourceName,
-        int recordCount,
-        int warningCount,
-        IReadOnlyList<(string WarningCode, int Count)> warningCodes)
+        string sourceName)
     {
-        return new SourceImportDetail
+        return new SourceReferenceDetail
         {
+            CaseId = "case-src-001",
             SourceImportId = sourceImportId,
             SourceName = sourceName,
             SourceType = "csv_messages",
             Platform = "sms",
+            ImportStatus = "imported",
             OriginalFilename = $"{sourceImportId}.csv",
-            StoredFilePath = $"imports/source_{sourceImportId}/original/{sourceImportId}.csv",
+            StoredRelativePath = $"imports/source_{sourceImportId}/original/{sourceImportId}.csv",
             FileSizeBytes = 2048,
             FileSha256 = "abcdef123456abcdef123456abcdef123456abcdef123456abcdef123456abcd",
             ImportedAtUtc = DateTimeOffset.Parse("2026-04-28T12:00:00Z"),
-            ImportedByUserId = "user-001",
-            ImportStatus = "imported",
-            RecordCount = recordCount,
-            WarningCount = warningCount,
-            HasNotes = true,
             HasSourceMetadata = true,
-            WarningSummary = new SourceWarningSummary
-            {
-                TotalWarnings = warningCount,
-                WarningCodeCounts = warningCodes
-                    .Select(static item => new SourceWarningCodeCount
-                    {
-                        WarningCode = item.WarningCode,
-                        Count = item.Count
-                    })
-                    .ToArray()
-            }
+            WasArtifactReferenceRequested = false,
+            WasMessageReferenceRequested = false
         };
     }
 
@@ -271,6 +261,11 @@ public sealed class SourceManagerViewModelTests
 
     private static int GetIntProperty(object instance, string propertyName)
     {
+        if (propertyName.Contains('.', StringComparison.Ordinal))
+        {
+            return Assert.IsType<int>(GetNestedPropertyValue(instance, propertyName));
+        }
+
         return Assert.IsType<int>(GetPropertyValue(instance, propertyName));
     }
 
@@ -287,6 +282,26 @@ public sealed class SourceManagerViewModelTests
     {
         var value = GetPropertyValue(instance, propertyName);
         return Assert.IsType<string>(value);
+    }
+
+    private static object GetNestedPropertyValue(object instance, string propertyPath)
+    {
+        var current = instance;
+        foreach (var segment in propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            current = GetPropertyValue(current, segment);
+        }
+
+        return current;
+    }
+
+    private static string GetFieldValue(object inspector, string sectionTitle, string fieldLabel)
+    {
+        var sections = GetCollection(inspector, "Sections");
+        var section = sections.Single(item => string.Equals(GetStringProperty(item, "Title"), sectionTitle, StringComparison.Ordinal));
+        var fields = GetCollection(section, "Fields");
+        var field = fields.Single(item => string.Equals(GetStringProperty(item, "Label"), fieldLabel, StringComparison.Ordinal));
+        return GetStringProperty(field, "Value");
     }
 
     private static void SetPropertyValue(object instance, string propertyName, object? value)
@@ -320,11 +335,7 @@ public sealed class SourceManagerViewModelTests
     {
         public IReadOnlyList<SourceImportSummary> Summaries { get; init; } = Array.Empty<SourceImportSummary>();
 
-        public Dictionary<string, SourceImportDetail> Details { get; init; } = new(StringComparer.Ordinal);
-
         public Exception? SummariesException { get; init; }
-
-        public int DetailCallCount { get; private set; }
 
         public int SummariesCallCount { get; private set; }
 
@@ -332,9 +343,7 @@ public sealed class SourceManagerViewModelTests
             LoadSourceImportDetailRequest request,
             CancellationToken cancellationToken = default)
         {
-            DetailCallCount++;
-            Details.TryGetValue(request.SourceImportId, out var detail);
-            return Task.FromResult(detail);
+            throw new InvalidOperationException("Source detail loading is not used by the shared source reference inspector.");
         }
 
         public Task<IReadOnlyList<SourceImportSummary>> GetSummariesAsync(
@@ -348,6 +357,29 @@ public sealed class SourceManagerViewModelTests
             }
 
             return Task.FromResult(Summaries);
+        }
+    }
+
+    private sealed class FakeSourceReferenceReader : ISourceReferenceReader
+    {
+        public int CallCount { get; private set; }
+
+        public Dictionary<string, SourceReferenceDetail?> Details { get; init; } = new(StringComparer.Ordinal);
+
+        public Exception? Exception { get; init; }
+
+        public Task<SourceReferenceDetail?> LoadAsync(
+            LoadSourceReferenceRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            CallCount++;
+            if (Exception is not null)
+            {
+                throw Exception;
+            }
+
+            Details.TryGetValue(request.SourceImportId, out var detail);
+            return Task.FromResult(detail);
         }
     }
 }

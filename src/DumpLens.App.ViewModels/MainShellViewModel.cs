@@ -8,6 +8,7 @@ using DumpLens.Application.Imports;
 using DumpLens.Application.MessageImports;
 using DumpLens.Application.Search;
 using DumpLens.Application.Sources;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.App.ViewModels;
 
@@ -23,6 +24,7 @@ public sealed class MainShellViewModel : ObservableObject
     private readonly IMessageSearchIndexService _messageSearchIndexService;
     private readonly IReadOnlyList<ISourceImporter> _sourceImporters;
     private readonly ISourceManagerService _sourceManagerService;
+    private readonly ISourceReferenceReader _sourceReferenceReader;
     private readonly IMessageImportService _messageImportService;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
     private readonly ISourceRegistrationService _sourceRegistrationService;
@@ -51,6 +53,7 @@ public sealed class MainShellViewModel : ObservableObject
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
             new UnavailableMessageSearchIndexService(),
+            new UnavailableSourceReferenceReader(),
             new EmptyImportWarningSummaryReader(),
             auditLoggerFactory: null,
             logAction: null)
@@ -69,6 +72,7 @@ public sealed class MainShellViewModel : ObservableObject
             new UnavailableMessageImportService(),
             new UnavailableCallImportService(),
             new UnavailableMessageSearchIndexService(),
+            new UnavailableSourceReferenceReader(),
             new EmptyImportWarningSummaryReader(),
             auditLoggerFactory: null,
             logAction)
@@ -84,6 +88,7 @@ public sealed class MainShellViewModel : ObservableObject
         IMessageImportService messageImportService,
         ICallImportService callImportService,
         IMessageSearchIndexService messageSearchIndexService,
+        ISourceReferenceReader sourceReferenceReader,
         IImportWarningSummaryReader importWarningSummaryReader,
         Func<string, IAuditLogger>? auditLoggerFactory,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
@@ -96,6 +101,7 @@ public sealed class MainShellViewModel : ObservableObject
         _messageImportService = messageImportService ?? throw new ArgumentNullException(nameof(messageImportService));
         _callImportService = callImportService ?? throw new ArgumentNullException(nameof(callImportService));
         _messageSearchIndexService = messageSearchIndexService ?? throw new ArgumentNullException(nameof(messageSearchIndexService));
+        _sourceReferenceReader = sourceReferenceReader ?? throw new ArgumentNullException(nameof(sourceReferenceReader));
         _importWarningSummaryReader = importWarningSummaryReader ?? throw new ArgumentNullException(nameof(importWarningSummaryReader));
         _auditLoggerFactory = auditLoggerFactory;
         _logAction = logAction ?? NoOpLogAction;
@@ -310,7 +316,7 @@ public sealed class MainShellViewModel : ObservableObject
 
         if (string.Equals(_selectedNavigationItem.Label, "Conversations", StringComparison.Ordinal))
         {
-            _conversationWorkspace = new ConversationWorkspaceViewModel(_activeCase, _conversationReader, _logAction);
+            _conversationWorkspace = new ConversationWorkspaceViewModel(_activeCase, _conversationReader, _sourceReferenceReader, _logAction);
             _conversationWorkspace.PropertyChanged += OnConversationWorkspacePropertyChanged;
             CurrentWorkspace = _conversationWorkspace;
             Inspector = _conversationWorkspace.CurrentInspector;
@@ -319,7 +325,7 @@ public sealed class MainShellViewModel : ObservableObject
 
         if (string.Equals(_selectedNavigationItem.Label, "Sources", StringComparison.Ordinal))
         {
-            _sourceManagerWorkspace = new SourceManagerViewModel(_activeCase, _sourceManagerService, _logAction);
+            _sourceManagerWorkspace = new SourceManagerViewModel(_activeCase, _sourceManagerService, _sourceReferenceReader, _logAction);
             _sourceManagerWorkspace.PropertyChanged += OnSourceManagerWorkspacePropertyChanged;
             CurrentWorkspace = _sourceManagerWorkspace;
             Inspector = _sourceManagerWorkspace.CurrentDetail;
@@ -328,7 +334,7 @@ public sealed class MainShellViewModel : ObservableObject
 
         if (string.Equals(_selectedNavigationItem.Label, "Search", StringComparison.Ordinal))
         {
-            _searchWorkspace = new SearchWorkspaceViewModel(_activeCase, _messageSearchIndexService, _logAction);
+            _searchWorkspace = new SearchWorkspaceViewModel(_activeCase, _messageSearchIndexService, _sourceReferenceReader, _logAction);
             _searchWorkspace.PropertyChanged += OnSearchWorkspacePropertyChanged;
             CurrentWorkspace = _searchWorkspace;
             Inspector = _searchWorkspace.CurrentInspector;
@@ -618,6 +624,16 @@ public sealed class MainShellViewModel : ObservableObject
             CancellationToken cancellationToken = default)
         {
             throw new InvalidOperationException("No message search service is configured for this shell instance.");
+        }
+    }
+
+    private sealed class UnavailableSourceReferenceReader : ISourceReferenceReader
+    {
+        public Task<SourceReferenceDetail?> LoadAsync(
+            LoadSourceReferenceRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            throw new InvalidOperationException("No source reference reader is configured for this shell instance.");
         }
     }
 }

@@ -68,6 +68,10 @@ The WPF desktop shell may reference `DumpLens.Ingestion` only to instantiate exi
 
 The WPF desktop shell may reference `DumpLens.Normalization` and `DumpLens.Security` only to instantiate existing application-facing services needed by the approved import workflow at startup. This exception is limited to composition root wiring inside `DumpLens.App`; views and view models remain dependent on application-facing contracts and must not take on normalization, hashing, or evidence-processing logic directly.
 
+## D0017 - Source Reference Inspection Uses Shared Application Contracts
+
+Source reference inspection should use shared application-facing contracts and persistence readers so Search, Conversations, and Sources can reuse the same safe traceability model without moving SQLite access into view models or views.
+
 ## Decision Change Process
 
 If a ticket changes architecture, project references, schema, testing expectations, or logging requirements:

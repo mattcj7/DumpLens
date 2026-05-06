@@ -2,6 +2,7 @@ using System.Collections;
 using System.Reflection;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Conversations;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.Tests.Unit.UI;
 
@@ -23,7 +24,7 @@ public sealed class ConversationWorkspaceViewModelTests
         Assert.Equal(0, reader.ThreadCallCount);
 
         var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-        Assert.Equal("Create or open a case to inspect conversation source context.", GetStringProperty(inspector, "Description"));
+        Assert.Equal("Create or open a case to inspect safe source references.", GetStringProperty(inspector, "Description"));
 
         Assert.Contains(logs, entry => entry.Operation == "conversation_workspace_opened");
         Assert.Contains(logs, entry => entry.Operation == "conversation_workspace_active_case_missing");
@@ -134,6 +135,15 @@ public sealed class ConversationWorkspaceViewModelTests
     {
         const string sensitiveToken = "TOP_SECRET_THREAD_BODY";
         var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            DetailResult = CreateSourceReferenceDetail(
+                sourceImportId: "src-001",
+                sourceArtifactId: "msg-001-artifact",
+                messageId: "msg-001",
+                providerMessageId: "provider-001",
+                sourceThreadId: "thread-a")
+        };
         var reader = new FakeConversationReader
         {
             Summaries =
@@ -150,7 +160,7 @@ public sealed class ConversationWorkspaceViewModelTests
             }
         };
 
-        var viewModel = CreateViewModel(CreateActiveCase(), reader, logs);
+        var viewModel = CreateViewModel(CreateActiveCase(), reader, logs, sourceReferenceReader);
         await WaitForAsync(() => GetIntProperty(viewModel, "ThreadMessageCount") == 1);
 
         var messages = GetCollection(viewModel, "ThreadMessages");
@@ -159,18 +169,59 @@ public sealed class ConversationWorkspaceViewModelTests
         await WaitForAsync(() =>
         {
             var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-            return GetBooleanProperty(inspector, "HasSourceContext");
+            return GetIntProperty(inspector, "Sections.Count") == 3;
         });
 
         var inspector = GetPropertyValue(viewModel, "CurrentInspector");
-        Assert.Equal("src-001", GetStringProperty(inspector, "SourceImportIdDisplay"));
-        Assert.Equal("csv_messages", GetStringProperty(inspector, "SourceTypeDisplay"));
-        Assert.Equal("thread-a", GetStringProperty(inspector, "SourceThreadIdDisplay"));
-        Assert.Equal("provider-001", GetStringProperty(inspector, "ProviderMessageIdDisplay"));
+        Assert.Equal("src-001", GetFieldValue(inspector, "Source Reference", "Source Import ID"));
+        Assert.Equal("csv_messages", GetFieldValue(inspector, "Source Reference", "Source Type"));
+        Assert.Equal("thread-a", GetFieldValue(inspector, "Message Reference", "Source Thread ID"));
+        Assert.Equal("provider-001", GetFieldValue(inspector, "Message Reference", "Provider Message ID"));
 
         Assert.Contains(logs, entry => entry.Operation == "conversation_workspace_message_selected");
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_requested");
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_loaded");
         Assert.All(logs, entry => Assert.DoesNotContain(sensitiveToken, entry.Message, StringComparison.Ordinal));
         Assert.All(logs, entry => Assert.DoesNotContain(sensitiveToken, string.Join("|", entry.Fields.Values), StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task ConversationWorkspaceViewModel_Missing_Source_Reference_Shows_Safe_Error()
+    {
+        var logs = new List<UiLogEntry>();
+        var sourceReferenceReader = new FakeSourceReferenceReader
+        {
+            DetailResult = null
+        };
+        var reader = new FakeConversationReader
+        {
+            Summaries =
+            [
+                CreateSummary("conv-001", "Synthetic Conversation", "sms", "2026-04-28T12:00:00Z", "2026-04-28T12:45:00Z", 1, 1, 0, 2.5, "not_started", "unreviewed")
+            ],
+            Threads =
+            {
+                ["conv-001"] = CreateThread(
+                    "conv-001",
+                    [
+                        CreateMessage("msg-001", "2026-04-28T12:00:00Z", "outgoing", "Sender A", ["Recipient A"], "Thread A one", "sms", "present", "src-001", "Synthetic Source A", "csv_messages", "thread-a", "provider-001")
+                    ])
+            }
+        };
+
+        var viewModel = CreateViewModel(CreateActiveCase(), reader, logs, sourceReferenceReader);
+        await WaitForAsync(() => GetIntProperty(viewModel, "ThreadMessageCount") == 1);
+
+        var messages = GetCollection(viewModel, "ThreadMessages");
+        SetPropertyValue(viewModel, "SelectedMessage", messages[0]);
+
+        await WaitForAsync(() =>
+        {
+            var inspector = GetPropertyValue(viewModel, "CurrentInspector");
+            return string.Equals(GetStringProperty(inspector, "StateMessage"), "Source reference could not be loaded.", StringComparison.Ordinal);
+        });
+
+        Assert.Contains(logs, entry => entry.Operation == "source_reference_inspector_missing");
     }
 
     [Fact]
@@ -222,10 +273,59 @@ public sealed class ConversationWorkspaceViewModelTests
         Assert.All(logs, entry => Assert.DoesNotContain(sensitiveToken, string.Join("|", entry.Fields.Values), StringComparison.Ordinal));
     }
 
+    private static SourceReferenceDetail CreateSourceReferenceDetail(
+        string sourceImportId,
+        string? sourceArtifactId,
+        string? messageId,
+        string? providerMessageId = null,
+        string? sourceThreadId = null)
+    {
+        return new SourceReferenceDetail
+        {
+            CaseId = "case-conv-001",
+            SourceImportId = sourceImportId,
+            SourceName = "Synthetic Conversation Source",
+            SourceType = "csv_messages",
+            Platform = "sms",
+            ImportStatus = "imported",
+            OriginalFilename = $"{sourceImportId}.csv",
+            StoredRelativePath = $"imports/source_{sourceImportId}/original/{sourceImportId}.csv",
+            FileSizeBytes = 2048,
+            FileSha256 = "abcdef123456abcdef123456abcdef123456abcdef123456abcdef123456abcd",
+            ImportedAtUtc = DateTimeOffset.Parse("2026-04-28T12:00:00Z"),
+            HasSourceMetadata = true,
+            WasArtifactReferenceRequested = sourceArtifactId is not null,
+            WasMessageReferenceRequested = messageId is not null,
+            ArtifactReference = sourceArtifactId is null
+                ? null
+                : new SourceArtifactReferenceDetail
+                {
+                    SourceArtifactId = sourceArtifactId,
+                    ArtifactType = "message_row",
+                    ArtifactLocator = $"row:{sourceArtifactId}",
+                    HasOriginalMetadata = true
+                },
+            MessageReference = messageId is null
+                ? null
+                : new MessageSourceReferenceDetail
+                {
+                    MessageId = messageId,
+                    SourceArtifactId = sourceArtifactId,
+                    ProviderMessageId = providerMessageId,
+                    SourceThreadId = sourceThreadId,
+                    EventTimeUtc = DateTimeOffset.Parse("2026-04-28T12:00:00Z"),
+                    DeletedStatus = "present",
+                    MessageHashPrefix = "abcdef123456",
+                    HasOriginalMetadata = true
+                }
+        };
+    }
+
     private static object CreateViewModel(
         CreateCaseResult? activeCase,
         IConversationReader reader,
-        List<UiLogEntry> logs)
+        List<UiLogEntry> logs,
+        ISourceReferenceReader? sourceReferenceReader = null)
     {
         var assembly = ViewModelAssemblyLoader.Load();
         var type = assembly.GetType("DumpLens.App.ViewModels.ConversationWorkspaceViewModel", throwOnError: true)!;
@@ -235,7 +335,7 @@ public sealed class ConversationWorkspaceViewModelTests
                 logs.Add(new UiLogEntry(operation, correlationId, message, fields ?? new Dictionary<string, string>(StringComparer.Ordinal)));
             };
 
-        return Activator.CreateInstance(type, activeCase, reader, logAction)!;
+        return Activator.CreateInstance(type, activeCase, reader, sourceReferenceReader ?? new FakeSourceReferenceReader(), logAction)!;
     }
 
     private static CreateCaseResult CreateActiveCase()
@@ -350,6 +450,11 @@ public sealed class ConversationWorkspaceViewModelTests
 
     private static int GetIntProperty(object instance, string propertyName)
     {
+        if (propertyName.Contains('.', StringComparison.Ordinal))
+        {
+            return Assert.IsType<int>(GetNestedPropertyValue(instance, propertyName));
+        }
+
         return Assert.IsType<int>(GetPropertyValue(instance, propertyName));
     }
 
@@ -365,6 +470,26 @@ public sealed class ConversationWorkspaceViewModelTests
     private static string GetStringProperty(object instance, string propertyName)
     {
         return Assert.IsType<string>(GetPropertyValue(instance, propertyName));
+    }
+
+    private static object GetNestedPropertyValue(object instance, string propertyPath)
+    {
+        var current = instance;
+        foreach (var segment in propertyPath.Split('.', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries))
+        {
+            current = GetPropertyValue(current, segment);
+        }
+
+        return current;
+    }
+
+    private static string GetFieldValue(object inspector, string sectionTitle, string fieldLabel)
+    {
+        var sections = GetCollection(inspector, "Sections");
+        var section = sections.Single(item => string.Equals(GetStringProperty(item, "Title"), sectionTitle, StringComparison.Ordinal));
+        var fields = GetCollection(section, "Fields");
+        var field = fields.Single(item => string.Equals(GetStringProperty(item, "Label"), fieldLabel, StringComparison.Ordinal));
+        return GetStringProperty(field, "Value");
     }
 
     private static void SetPropertyValue(object instance, string propertyName, object? value)
@@ -433,6 +558,25 @@ public sealed class ConversationWorkspaceViewModelTests
 
             Threads.TryGetValue(request.ConversationId, out var thread);
             return Task.FromResult(thread);
+        }
+    }
+
+    private sealed class FakeSourceReferenceReader : ISourceReferenceReader
+    {
+        public SourceReferenceDetail? DetailResult { get; init; }
+
+        public Exception? Exception { get; init; }
+
+        public Task<SourceReferenceDetail?> LoadAsync(
+            LoadSourceReferenceRequest request,
+            CancellationToken cancellationToken = default)
+        {
+            if (Exception is not null)
+            {
+                throw Exception;
+            }
+
+            return Task.FromResult(DetailResult);
         }
     }
 }

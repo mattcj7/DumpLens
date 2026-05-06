@@ -68,7 +68,7 @@ DumpLens.App
   -> DumpLens.Application
   -> DumpLens.Ingestion (composition root only for preview/probe wiring)
   -> DumpLens.Normalization (composition root only for existing import normalization service wiring)
-  -> DumpLens.Persistence (composition root only for startup/service wiring)
+  -> DumpLens.Persistence (composition root only for startup/service wiring, including source-reference readers)
   -> DumpLens.Security (composition root only for existing hashing service wiring)
 ```
 
@@ -113,7 +113,7 @@ DumpLens.Tests.Performance
 - `DumpLens.Core` must remain dependency-free.
 - UI projects must not reference persistence directly unless a ticket explicitly approves it.
 - UI projects must not reference ingestion directly unless a ticket explicitly approves it.
-- `DumpLens.App` may reference `DumpLens.Persistence` only as a composition root for startup wiring to existing application services. Keep persistence types out of views and view models.
+- `DumpLens.App` may reference `DumpLens.Persistence` only as a composition root for startup wiring to existing application services, including source-reference readers. Keep persistence types out of views and view models.
 - `DumpLens.App` may reference `DumpLens.Ingestion` only as a composition root for startup wiring to existing application-facing import preview/probe services. Keep ingestion types out of views and view models.
 - `DumpLens.App` may reference `DumpLens.Normalization` only as a composition root for startup wiring to existing application-facing import normalization services. Keep normalization types out of views and view models.
 - `DumpLens.App` may reference `DumpLens.Security` only as a composition root for startup wiring to existing application-facing hashing or evidence-safety services. Keep security types out of views and view models.

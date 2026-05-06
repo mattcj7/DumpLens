@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Search;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.App.ViewModels;
 
@@ -22,10 +23,12 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
     private readonly string _correlationId;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
     private readonly IMessageSearchIndexService _messageSearchIndexService;
-    private SearchInspectorViewModel _currentInspector;
+    private readonly ISourceReferenceReader _sourceReferenceReader;
+    private SourceReferenceInspectorViewModel _currentInspector;
     private string? _errorMessage;
     private bool _hasSearched;
     private bool _isBusy;
+    private int _inspectorLoadVersion;
     private SearchResultItemViewModel? _selectedResult;
     private string _searchQueryText;
     private string _statusMessage;
@@ -34,6 +37,7 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
     public SearchWorkspaceViewModel(
         CreateCaseResult? activeCase,
         IMessageSearchIndexService messageSearchIndexService,
+        ISourceReferenceReader sourceReferenceReader,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
         : base(
             "Search",
@@ -41,6 +45,7 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
     {
         _activeCase = activeCase;
         _messageSearchIndexService = messageSearchIndexService ?? throw new ArgumentNullException(nameof(messageSearchIndexService));
+        _sourceReferenceReader = sourceReferenceReader ?? throw new ArgumentNullException(nameof(sourceReferenceReader));
         _logAction = logAction ?? NoOpLogAction;
         _correlationId = Guid.NewGuid().ToString("N");
         _searchQueryText = string.Empty;
@@ -48,8 +53,8 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
             ? "Create or open a case to search messages."
             : "Enter one or more search terms to search messages in this case.";
         _currentInspector = activeCase is null
-            ? SearchInspectorViewModel.CreateActiveCaseMissing()
-            : SearchInspectorViewModel.CreateNoResultSelected();
+            ? SourceReferenceInspectorViewModel.CreateActiveCaseMissing()
+            : SourceReferenceInspectorViewModel.CreateNoSelection();
 
         Results = new ObservableCollection<SearchResultItemViewModel>();
         SearchCommand = new AsyncRelayCommand(ExecuteSearchAsync, CanSubmitWork);
@@ -73,7 +78,7 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
 
     public bool CanEditSearchQuery => HasActiveCase && !IsBusy;
 
-    public SearchInspectorViewModel CurrentInspector
+    public SourceReferenceInspectorViewModel CurrentInspector
     {
         get => _currentInspector;
         private set => SetProperty(ref _currentInspector, value);
@@ -163,12 +168,12 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
             if (value is null)
             {
                 CurrentInspector = HasActiveCase
-                    ? SearchInspectorViewModel.CreateNoResultSelected()
-                    : SearchInspectorViewModel.CreateActiveCaseMissing();
+                    ? SourceReferenceInspectorViewModel.CreateNoSelection()
+                    : SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
                 return;
             }
 
-            CurrentInspector = SearchInspectorViewModel.FromResult(value);
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoading();
             _logAction(
                 ResultSelectedOperation,
                 _correlationId,
@@ -180,6 +185,8 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
                     ["source_import_id"] = value.SourceImportId,
                     ["source_artifact_id"] = value.SourceArtifactId ?? "-"
                 });
+
+            _ = LoadSourceReferenceInspectorAsync(value);
         }
     }
 
@@ -366,7 +373,7 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
             SetHasSearched(true);
             SelectedResult = null;
             ReplaceResults(result.Results.Select(static item => new SearchResultItemViewModel(item)));
-            CurrentInspector = SearchInspectorViewModel.CreateNoResultSelected();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
             StatusMessage = result.ResultCount == 0
                 ? "No matching messages found."
                 : result.ResultCount == 1
@@ -390,7 +397,7 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
             SelectedResult = null;
             ErrorMessage = "Search could not be completed. Try again or rebuild the search index.";
             StatusMessage = ErrorMessage;
-            CurrentInspector = SearchInspectorViewModel.CreateNoResultSelected();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
 
             _logAction(
                 SearchFailedOperation,
@@ -430,5 +437,96 @@ public sealed class SearchWorkspaceViewModel : WorkspaceViewModelBase
         _hasSearched = value;
         OnPropertyChanged(nameof(ResultsEmptyStateMessage));
         OnPropertyChanged(nameof(IsResultsEmptyStateVisible));
+    }
+
+    private async Task LoadSourceReferenceInspectorAsync(SearchResultItemViewModel result)
+    {
+        if (_activeCase is null)
+        {
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
+            return;
+        }
+
+        var requestVersion = Interlocked.Increment(ref _inspectorLoadVersion);
+
+        _logAction(
+            "source_reference_inspector_requested",
+            _correlationId,
+            "Source reference inspector requested.",
+            new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+            {
+                ["source_import_id"] = result.SourceImportId,
+                ["source_artifact_id"] = result.SourceArtifactId ?? "-",
+                ["message_id"] = result.MessageId
+            });
+
+        try
+        {
+            var detail = await _sourceReferenceReader.LoadAsync(
+                    new LoadSourceReferenceRequest
+                    {
+                        CaseId = _activeCase.CaseId,
+                        CaseDatabasePath = _activeCase.DatabasePath,
+                        CasePackageRootPath = _activeCase.PackageRootPath,
+                        SourceImportId = result.SourceImportId,
+                        SourceArtifactId = result.SourceArtifactId,
+                        MessageId = result.MessageId,
+                        CorrelationId = _correlationId
+                    })
+                .ConfigureAwait(false);
+
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedResult, result))
+            {
+                return;
+            }
+
+            if (detail is null)
+            {
+                CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
+                _logAction(
+                    "source_reference_inspector_missing",
+                    _correlationId,
+                    "Source reference inspector target was not found.",
+                    new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                    {
+                        ["source_import_id"] = result.SourceImportId,
+                        ["source_artifact_id"] = result.SourceArtifactId ?? "-",
+                        ["message_id"] = result.MessageId
+                    });
+                return;
+            }
+
+            CurrentInspector = SourceReferenceInspectorViewModel.From(detail);
+            _logAction(
+                "source_reference_inspector_loaded",
+                _correlationId,
+                "Source reference inspector loaded.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["source_import_id"] = detail.SourceImportId,
+                    ["source_artifact_id"] = detail.ArtifactReference?.SourceArtifactId ?? result.SourceArtifactId ?? "-",
+                    ["message_id"] = detail.MessageReference?.MessageId ?? result.MessageId
+                });
+        }
+        catch (Exception exception)
+        {
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedResult, result))
+            {
+                return;
+            }
+
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
+            _logAction(
+                "source_reference_inspector_load_failed",
+                _correlationId,
+                "Source reference inspector load failed.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["source_import_id"] = result.SourceImportId,
+                    ["source_artifact_id"] = result.SourceArtifactId ?? "-",
+                    ["message_id"] = result.MessageId,
+                    ["failure_type"] = exception.GetType().Name
+                });
+        }
     }
 }

@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using DumpLens.Application.Cases;
 using DumpLens.Application.Conversations;
+using DumpLens.Application.SourceReferences;
 
 namespace DumpLens.App.ViewModels;
 
@@ -23,11 +24,13 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
     private readonly string _correlationId;
     private readonly IConversationReader _conversationReader;
     private readonly Action<string, string, string, IReadOnlyDictionary<string, string>?> _logAction;
+    private readonly ISourceReferenceReader _sourceReferenceReader;
     private ConversationListItemViewModel? _selectedConversation;
     private ConversationThreadMessageViewModel? _selectedMessage;
-    private ConversationInspectorViewModel _currentInspector;
+    private SourceReferenceInspectorViewModel _currentInspector;
     private string? _conversationListErrorMessage;
     private bool _isConversationListLoading;
+    private int _inspectorLoadVersion;
     private bool _isThreadLoading;
     private string _statusMessage;
     private string _threadErrorMessage;
@@ -37,6 +40,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
     public ConversationWorkspaceViewModel(
         CreateCaseResult? activeCase,
         IConversationReader conversationReader,
+        ISourceReferenceReader sourceReferenceReader,
         Action<string, string, string, IReadOnlyDictionary<string, string>?>? logAction = null)
         : base(
             "Conversations",
@@ -44,6 +48,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
     {
         _activeCase = activeCase;
         _conversationReader = conversationReader ?? throw new ArgumentNullException(nameof(conversationReader));
+        _sourceReferenceReader = sourceReferenceReader ?? throw new ArgumentNullException(nameof(sourceReferenceReader));
         _logAction = logAction ?? NoOpLogAction;
         _correlationId = Guid.NewGuid().ToString("N");
         _statusMessage = activeCase is null
@@ -54,8 +59,8 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             : "Select a conversation to view its message thread.";
         _threadErrorMessage = string.Empty;
         _currentInspector = activeCase is null
-            ? ConversationInspectorViewModel.CreateActiveCaseMissing()
-            : ConversationInspectorViewModel.CreateNoConversationSelected();
+            ? SourceReferenceInspectorViewModel.CreateActiveCaseMissing()
+            : SourceReferenceInspectorViewModel.CreateNoSelection();
 
         Conversations = new ObservableCollection<ConversationListItemViewModel>();
         ThreadMessages = new ObservableCollection<ConversationThreadMessageViewModel>();
@@ -100,7 +105,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
 
     public int ConversationCount => Conversations.Count;
 
-    public ConversationInspectorViewModel CurrentInspector
+    public SourceReferenceInspectorViewModel CurrentInspector
     {
         get => _currentInspector;
         private set => SetProperty(ref _currentInspector, value);
@@ -157,13 +162,10 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             }
 
             OnPropertyChanged(nameof(HasSelectedConversation));
-            CurrentInspector = value is null
-                ? HasActiveCase
-                    ? ConversationInspectorViewModel.CreateNoConversationSelected()
-                    : ConversationInspectorViewModel.CreateActiveCaseMissing()
-                : ConversationInspectorViewModel.FromConversation(value);
-
             SelectedMessage = null;
+            CurrentInspector = HasActiveCase
+                ? SourceReferenceInspectorViewModel.CreateNoSelection()
+                : SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
             _ = LoadThreadAsync(value);
         }
     }
@@ -180,18 +182,13 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
 
             if (value is null)
             {
-                if (SelectedConversation is not null)
-                {
-                    CurrentInspector = ConversationInspectorViewModel.FromConversation(SelectedConversation);
-                }
-
+                CurrentInspector = HasActiveCase
+                    ? SourceReferenceInspectorViewModel.CreateNoSelection()
+                    : SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
                 return;
             }
 
-            if (SelectedConversation is not null)
-            {
-                CurrentInspector = ConversationInspectorViewModel.FromMessage(SelectedConversation, value);
-            }
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoading();
 
             _logAction(
                 MessageSelectedOperation,
@@ -202,6 +199,8 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
                     ["conversation_id"] = SelectedConversation?.ConversationId ?? "-",
                     ["message_id"] = value.MessageId
                 });
+
+            _ = LoadSourceReferenceInspectorAsync(value);
         }
     }
 
@@ -253,7 +252,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
         ReplaceThreadMessages([]);
         ThreadErrorMessage = string.Empty;
         ThreadStatusMessage = "Select a conversation to view its message thread.";
-        CurrentInspector = ConversationInspectorViewModel.CreateNoConversationSelected();
+        CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
 
         _logAction(
             ConversationListLoadRequestedOperation,
@@ -297,7 +296,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             StatusMessage = ConversationListErrorMessage;
             ThreadErrorMessage = "Conversation thread is unavailable because the conversation list could not be loaded.";
             ThreadStatusMessage = "Conversation thread is unavailable because the conversation list could not be loaded.";
-            CurrentInspector = ConversationInspectorViewModel.CreateConversationLoadFailure();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
 
             _logAction(
                 ConversationListLoadFailedOperation,
@@ -324,7 +323,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
         if (_activeCase is null)
         {
             ThreadStatusMessage = "Create or open a case to view conversations.";
-            CurrentInspector = ConversationInspectorViewModel.CreateActiveCaseMissing();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
             return;
         }
 
@@ -333,11 +332,11 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             ThreadStatusMessage = HasConversations
                 ? "Select a conversation to view its message thread."
                 : "No conversations have been built for this case yet. Run the conversation builder after importing messages.";
-            CurrentInspector = ConversationInspectorViewModel.CreateNoConversationSelected();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
             return;
         }
 
-        CurrentInspector = ConversationInspectorViewModel.FromConversation(conversation);
+        CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
         ThreadStatusMessage = "Loading messages for the selected conversation.";
         IsThreadLoading = true;
 
@@ -380,7 +379,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
                 ReplaceThreadMessages([]);
                 ThreadErrorMessage = "Conversation thread could not be loaded. Check the case package and try again.";
                 ThreadStatusMessage = ThreadErrorMessage;
-                CurrentInspector = ConversationInspectorViewModel.CreateConversationLoadFailure();
+                CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
 
                 _logAction(
                     ThreadLoadFailedOperation,
@@ -399,7 +398,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             ThreadStatusMessage = thread.Messages.Count == 0
                 ? "No messages are assigned to the selected conversation."
                 : $"{thread.Messages.Count.ToString(CultureInfo.InvariantCulture)} messages loaded.";
-            CurrentInspector = ConversationInspectorViewModel.FromConversation(conversation);
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateNoSelection();
 
             _logAction(
                 ThreadLoadSucceededOperation,
@@ -421,7 +420,7 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
             ReplaceThreadMessages([]);
             ThreadErrorMessage = "Conversation thread could not be loaded. Check the case package and try again.";
             ThreadStatusMessage = ThreadErrorMessage;
-            CurrentInspector = ConversationInspectorViewModel.CreateConversationLoadFailure();
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
 
             _logAction(
                 ThreadLoadFailedOperation,
@@ -481,5 +480,118 @@ public sealed class ConversationWorkspaceViewModel : WorkspaceViewModelBase
         OnPropertyChanged(nameof(HasThreadMessages));
         OnPropertyChanged(nameof(IsThreadEmptyStateVisible));
         OnPropertyChanged(nameof(ThreadMessageCount));
+    }
+
+    private async Task LoadSourceReferenceInspectorAsync(ConversationThreadMessageViewModel message)
+    {
+        if (_activeCase is null || SelectedConversation is null)
+        {
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateActiveCaseMissing();
+            return;
+        }
+
+        var requestVersion = Interlocked.Increment(ref _inspectorLoadVersion);
+        var sourceImportId = message.SourceContext?.SourceImportId;
+
+        if (string.IsNullOrWhiteSpace(sourceImportId))
+        {
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
+            _logAction(
+                "source_reference_inspector_missing",
+                _correlationId,
+                "Source reference inspector target was not found.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["conversation_id"] = SelectedConversation.ConversationId,
+                    ["message_id"] = message.MessageId,
+                    ["source_import_id"] = "-",
+                    ["source_artifact_id"] = message.SourceContext?.SourceArtifactId ?? "-"
+                });
+            return;
+        }
+
+        _logAction(
+            "source_reference_inspector_requested",
+            _correlationId,
+            "Source reference inspector requested.",
+            new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+            {
+                ["conversation_id"] = SelectedConversation.ConversationId,
+                ["message_id"] = message.MessageId,
+                ["source_import_id"] = sourceImportId,
+                ["source_artifact_id"] = message.SourceContext?.SourceArtifactId ?? "-"
+            });
+
+        try
+        {
+            var detail = await _sourceReferenceReader.LoadAsync(
+                    new LoadSourceReferenceRequest
+                    {
+                        CaseId = _activeCase.CaseId,
+                        CaseDatabasePath = _activeCase.DatabasePath,
+                        CasePackageRootPath = _activeCase.PackageRootPath,
+                        SourceImportId = sourceImportId,
+                        SourceArtifactId = message.SourceContext?.SourceArtifactId,
+                        MessageId = message.MessageId,
+                        CorrelationId = _correlationId
+                    })
+                .ConfigureAwait(false);
+
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedMessage, message))
+            {
+                return;
+            }
+
+            if (detail is null)
+            {
+                CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
+                _logAction(
+                    "source_reference_inspector_missing",
+                    _correlationId,
+                    "Source reference inspector target was not found.",
+                    new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                    {
+                        ["conversation_id"] = SelectedConversation.ConversationId,
+                        ["message_id"] = message.MessageId,
+                        ["source_import_id"] = sourceImportId,
+                        ["source_artifact_id"] = message.SourceContext?.SourceArtifactId ?? "-"
+                    });
+                return;
+            }
+
+            CurrentInspector = SourceReferenceInspectorViewModel.From(detail);
+            _logAction(
+                "source_reference_inspector_loaded",
+                _correlationId,
+                "Source reference inspector loaded.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["conversation_id"] = SelectedConversation.ConversationId,
+                    ["message_id"] = detail.MessageReference?.MessageId ?? message.MessageId,
+                    ["source_import_id"] = detail.SourceImportId,
+                    ["source_artifact_id"] = detail.ArtifactReference?.SourceArtifactId ?? message.SourceContext?.SourceArtifactId ?? "-"
+                });
+        }
+        catch (Exception exception)
+        {
+            if (requestVersion != _inspectorLoadVersion || !ReferenceEquals(SelectedMessage, message))
+            {
+                return;
+            }
+
+            CurrentInspector = SourceReferenceInspectorViewModel.CreateLoadFailure();
+            _logAction(
+                "source_reference_inspector_load_failed",
+                _correlationId,
+                "Source reference inspector load failed.",
+                new Dictionary<string, string>(CreateBaseFields(), StringComparer.Ordinal)
+                {
+                    ["conversation_id"] = SelectedConversation.ConversationId,
+                    ["message_id"] = message.MessageId,
+                    ["source_import_id"] = sourceImportId,
+                    ["source_artifact_id"] = message.SourceContext?.SourceArtifactId ?? "-",
+                    ["failure_type"] = exception.GetType().Name
+                });
+        }
     }
 }

@@ -683,6 +683,66 @@
             </Border>
         </DataTemplate>
 
+        <DataTemplate DataType="{x:Type vm:SourceReferenceInspectorViewModel}">
+            <ScrollViewer Margin="0,20,0,0"
+                          VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <Border Padding="14"
+                            Background="White"
+                            BorderBrush="#FFD6DCE3"
+                            BorderThickness="1"
+                            CornerRadius="8">
+                        <TextBlock Foreground="#FF52606D"
+                                   Text="{Binding StateMessage, Mode=OneWay}"
+                                   TextWrapping="Wrap" />
+                    </Border>
+
+                    <ItemsControl Margin="0,16,0,0"
+                                  ItemsSource="{Binding Sections, Mode=OneWay}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:SourceReferenceSectionViewModel}">
+                                <Border Margin="0,0,0,16"
+                                        Padding="14"
+                                        Background="White"
+                                        BorderBrush="#FFD6DCE3"
+                                        BorderThickness="1"
+                                        CornerRadius="8">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="SemiBold"
+                                                   Text="{Binding Title, Mode=OneWay}" />
+                                        <ItemsControl Margin="0,12,0,0"
+                                                      ItemsSource="{Binding Fields, Mode=OneWay}">
+                                            <ItemsControl.ItemTemplate>
+                                                <DataTemplate DataType="{x:Type vm:SourceReferenceFieldViewModel}">
+                                                    <Grid Margin="0,0,0,8">
+                                                        <Grid.ColumnDefinitions>
+                                                            <ColumnDefinition Width="Auto" />
+                                                            <ColumnDefinition Width="*" />
+                                                        </Grid.ColumnDefinitions>
+
+                                                        <TextBlock FontWeight="SemiBold"
+                                                                   Text="{Binding Label, Mode=OneWay}" />
+                                                        <TextBlock Grid.Column="1"
+                                                                   Margin="12,0,0,0"
+                                                                   Text="{Binding Value, Mode=OneWay}"
+                                                                   TextWrapping="Wrap" />
+                                                    </Grid>
+                                                </DataTemplate>
+                                            </ItemsControl.ItemTemplate>
+                                        </ItemsControl>
+                                        <TextBlock Margin="0,12,0,0"
+                                                   Foreground="#FF52606D"
+                                                   Text="{Binding EmptyMessage, Mode=OneWay}"
+                                                   TextWrapping="Wrap" />
+                                    </StackPanel>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+        </DataTemplate>
+
         <DataTemplate DataType="{x:Type vm:SourceDetailViewModel}">
             <ScrollViewer Margin="0,20,0,0"
                           VerticalScrollBarVisibility="Auto">

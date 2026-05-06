@@ -15,6 +15,7 @@ using DumpLens.Persistence.Imports;
 using DumpLens.Persistence.MessageImports;
 using DumpLens.Persistence.Search;
 using DumpLens.Persistence.Sources;
+using DumpLens.Persistence.SourceReferences;
 using DumpLens.Security.FileHashing;
 
 namespace DumpLens.App;
@@ -44,6 +45,7 @@ public partial class App : System.Windows.Application
         var messageImportService = new SqliteMessageImportService(sourceImporters, identityNormalizer, timestampNormalizer);
         var callImportService = new SqliteCallImportService(sourceImporters, identityNormalizer, timestampNormalizer);
         IMessageSearchIndexService messageSearchIndexService = new SqliteMessageSearchIndexService();
+        var sourceReferenceReader = new SqliteSourceReferenceReader();
         var importWarningSummaryReader = new SqliteImportWarningSummaryReader();
         Func<string, IAuditLogger> auditLoggerFactory = connectionString => new SqliteAuditLogger(connectionString);
 
@@ -58,6 +60,7 @@ public partial class App : System.Windows.Application
                 messageImportService,
                 callImportService,
                 messageSearchIndexService,
+                sourceReferenceReader,
                 importWarningSummaryReader,
                 auditLoggerFactory,
                 _logger.LogInformation)

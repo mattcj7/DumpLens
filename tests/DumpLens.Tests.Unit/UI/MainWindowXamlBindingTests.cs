@@ -31,11 +31,16 @@ public sealed class MainWindowXamlBindingTests
 
         Assert.Contains("{Binding IsEmptyStateVisible, Mode=OneWay, Converter={StaticResource BooleanToVisibilityConverter}}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding EmptyStateMessage, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding StateMessage, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding Sections, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding Fields, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding EmptyMessage, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding StoredFilePathDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding RecordCountDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding WarningCountDisplay, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding WarningSummary.WarningCodeCounts, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding Label, Mode=OneWay}", xaml, StringComparison.Ordinal);
+        Assert.Contains("{Binding Value, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding Summary, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding CurrentWorkspace.Title, Mode=OneWay}", xaml, StringComparison.Ordinal);
         Assert.Contains("{Binding Inspector.Title, Mode=OneWay}", xaml, StringComparison.Ordinal);
